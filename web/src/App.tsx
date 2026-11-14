@@ -246,7 +246,9 @@ export default function App() {
           <h2 className="text-sm font-medium">
             Sky from the site
             <span className="ml-2 font-normal text-muted">
-              {site.horizon ? 'skyline from LOLA terrain, about 2 km resolution' : 'smooth horizon, no terrain data for this point'}
+              {site.horizon
+                ? `skyline from LOLA terrain${site.horizon.resolution_m ? `, ${site.horizon.resolution_m >= 1000 ? `${(site.horizon.resolution_m / 1000).toFixed(1)} km` : `${site.horizon.resolution_m} m`} model` : ''}`
+                : 'smooth horizon, no terrain data for this point'}
             </span>
           </h2>
           <div className="flex flex-wrap items-center gap-2">
@@ -320,9 +322,15 @@ export default function App() {
         />
       </section>
 
-      <footer className="text-xs text-muted">
-        Sun and Earth positions from NASA NAIF SPICE (DE440), checked against JPL Horizons. Moon imagery: NASA
-        Scientific Visualization Studio, LRO. A NASA Space Apps 2026 project.
+      <footer className="max-w-4xl text-xs leading-relaxed text-muted">
+        This tool assesses sunlight and direct Earth contact. It does not assess whether the ground is safe to
+        land on; slopes and hazards are studied with tools such as{' '}
+        <a className="underline hover:text-ink" href="https://quickmap.lroc.im-ldi.com/" target="_blank" rel="noreferrer">
+          LROC Quickmap
+        </a>
+        . Sun and Earth positions come from NASA NAIF SPICE (DE440) and are checked against JPL Horizons. Terrain
+        skylines use LOLA elevation data and Moon imagery is from the NASA Scientific Visualization Studio, both from
+        the Lunar Reconnaissance Orbiter. Built for the NASA Space Apps Challenge 2026.
       </footer>
     </main>
   )

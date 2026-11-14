@@ -2,202 +2,216 @@
 # requires-python = ">=3.11,<3.14"
 # dependencies = ["numpy"]
 # ///
-"""Compute terrain-horizon profiles from the LOLA GDR (16 ppd) DEM.
+"""Compute terrain-horizon profiles from LOLA elevation models.
 
-For each site in web/public/data/sites.json, ray-marches 720 azimuths
-(0.5 degree spacing) out to 200 km, applying lunar-curvature correction,
-and writes web/public/data/horizons/{id}.json.
+For each site in web/public/data/sites.json this casts 720 rays (0.5 degree spacing,
+north first, clockwise) out to 250 km and records the highest elevation angle of the
+terrain along each ray, as seen from 2 m above the ground at the site.
 
-Output per site:
-  {
-    "id": "...",
-    "lat": ..., "lon": ...,
-    "az_step_deg": 0.5,
-    "mast_m": 2.0,
-    "elev_deg": [...],         # 720 floats, one per 0.5-deg azimuth, starting at north, clockwise
-    "source": "LOLA GDR 16ppd LDEM_16.IMG"
-  }
+Elevation models, finest first. Each sample point uses the finest model that covers it:
+  LDEM_80S_80M   south polar stereographic, 80 m/pixel, 80S to the pole   (optional, 115 MB)
+  LDEM_75S_240M  south polar stereographic, 240 m/pixel, 75S to the pole  (29 MB)
+  LDEM_16        global cylindrical, 16 pixels/degree, about 1.9 km       (33 MB)
 
-Run:  uv run pipeline/build_horizons.py
-DEM is downloaded once into pipeline/dem/ (~33 MB, git-ignored).
+Output, web/public/data/horizons/{id}.json (field names per the data contract in docs/PLAN.md):
+  {"id", "lat", "lon", "az_step_deg": 0.5, "mast_m": 2.0, "elev_deg": [720 floats],
+   "site_height_m", "resolution_m", "source"}
+
+Run:  uv run pipeline/build_horizons.py            (downloads the 240 m and global models)
+      uv run pipeline/build_horizons.py --fine     (also downloads the 80 m polar model)
+Models are cached in pipeline/dem/ (git-ignored).
+
+Original version by kamilovmuzaffarali (PR #2); extended with the polar models.
 """
 from __future__ import annotations
 
 import json
-import math
 import re
 import sys
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
 
 import numpy as np
 
-MOON_R_KM = 1737.4
-D2R = math.pi / 180.0
-
+R_M = 1737400.0
 HERE = Path(__file__).resolve().parent
 SITES_JSON = HERE.parent / "web" / "public" / "data" / "sites.json"
 OUT_DIR = HERE.parent / "web" / "public" / "data" / "horizons"
 DEM_DIR = HERE / "dem"
-
-DEM_URL = "https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/LDEM_16.IMG"
-DEM_LBL_URL = "https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/LDEM_16.LBL"
-DEM_PPD = 16
+BASE = "https://imbrium.mit.edu/DATA/LOLA_GDR"
 
 N_AZ = 720
-AZ_STEP = 360.0 / N_AZ       # 0.5 degrees
-MAX_RANGE_KM = 200.0
-STEP_KM = 2.0                 # ray-march step
-OBS_HEIGHT_M = 2.0            # observer height above terrain
+MAST_M = 2.0
+# Ray sample distances in metres: dense near the site, coarser far away.
+DIST_M = np.unique(
+    np.concatenate(
+        [
+            np.arange(40.0, 4000.0, 40.0),
+            np.arange(4000.0, 30000.0, 120.0),
+            np.arange(30000.0, 250001.0, 500.0),
+        ]
+    )
+)
 
 
-class DEM(NamedTuple):
-    data: np.ndarray
-    ppd: int
-    west_lon: float           # westernmost longitude (may be -180 or 0)
-    north_lat: float          # topmost latitude (usually +90)
-    H: int
-    W: int
-
-
-def _pds_val(text: str, key: str) -> str:
-    m = re.search(rf"^\s*{re.escape(key)}\s*=\s*(.+)", text, re.MULTILINE)
+def _label(text: str, key: str) -> float:
+    m = re.search(rf"^\s*{re.escape(key)}\s*=\s*([-+0-9.eE]+)", text, re.MULTILINE)
     if not m:
         raise KeyError(key)
-    return m.group(1).strip().strip('"').split()[0].rstrip(",")
+    return float(m.group(1))
 
 
-def load_lola_img(img_path: Path, lbl_path: Path) -> DEM:
-    """Load LOLA GDR with detached PDS3 label.
+@dataclass
+class Dem:
+    name: str
+    url: str
+    kind: str  # "polar_south" or "global"
+    data: np.ndarray | None = None
+    lines: int = 0
+    samples: int = 0
+    scale: float = 0.5  # metres per DN
+    l0: float = 0.0  # LINE_PROJECTION_OFFSET
+    s0: float = 0.0  # SAMPLE_PROJECTION_OFFSET
+    map_scale_m: float = 0.0  # polar: metres per pixel
+    ppd: float = 0.0  # global: pixels per degree
+    max_lat: float = 90.0
 
-    LDEM_16.IMG is raw binary (no embedded header).
-    HEIGHT (metres above reference sphere) = DN * SCALING_FACTOR.
-    OFFSET in the label is the planetary radius reference — do NOT add it.
-    WESTERNMOST_LONGITUDE = 0 deg (0–360 convention).
-    """
-    label_text = lbl_path.read_text("latin-1")
+    @property
+    def resolution_m(self) -> float:
+        return self.map_scale_m if self.kind == "polar_south" else (np.pi * R_M / 180.0) / self.ppd
 
-    H = int(_pds_val(label_text, "LINES"))
-    W = int(_pds_val(label_text, "LINE_SAMPLES"))
-    sample_type = _pds_val(label_text, "SAMPLE_TYPE")
+    def load(self) -> "Dem":
+        DEM_DIR.mkdir(exist_ok=True)
+        img, lbl = DEM_DIR / f"{self.name}.IMG", DEM_DIR / f"{self.name}.LBL"
+        for dest, ext in ((lbl, "LBL"), (img, "IMG")):
+            if not dest.exists():
+                print(f"downloading {self.name}.{ext} ...", flush=True)
+                tmp = dest.with_suffix(dest.suffix + ".part")
+                urllib.request.urlretrieve(f"{self.url}/{self.name}.{ext}", tmp)
+                tmp.rename(dest)
+        text = lbl.read_text("latin-1")
+        self.lines = int(_label(text, "LINES"))
+        self.samples = int(_label(text, "LINE_SAMPLES"))
+        self.scale = _label(text, "SCALING_FACTOR")
+        self.l0 = _label(text, "LINE_PROJECTION_OFFSET")
+        self.s0 = _label(text, "SAMPLE_PROJECTION_OFFSET")
+        if self.kind == "polar_south":
+            self.map_scale_m = _label(text, "MAP_SCALE")
+            self.max_lat = _label(text, "MAXIMUM_LATITUDE")
+        else:
+            self.ppd = _label(text, "MAP_RESOLUTION")
+        self.data = np.memmap(img, dtype="<i2", mode="r", shape=(self.lines, self.samples))
+        return self
 
-    try:
-        scale = float(_pds_val(label_text, "SCALING_FACTOR"))
-    except KeyError:
-        scale = 1.0
-    try:
-        west_lon = float(_pds_val(label_text, "WESTERNMOST_LONGITUDE"))
-    except KeyError:
-        west_lon = 0.0
-    try:
-        north_lat = float(_pds_val(label_text, "MAXIMUM_LATITUDE"))
-    except KeyError:
-        north_lat = 90.0
+    def pixel(self, lat: np.ndarray, lon: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Fractional 0-based (line, sample) of each point and a mask of points this model covers."""
+        if self.kind == "polar_south":
+            # PDS polar stereographic about the south pole (see DSMAP_POLAR.CAT):
+            # x = (sample - S0) * scale, y = (L0 - line) * scale, lon = atan2(x, y).
+            r = 2.0 * R_M * np.tan(np.radians(90.0 + lat) / 2.0)
+            x = r * np.sin(np.radians(lon))
+            y = r * np.cos(np.radians(lon))
+            col = x / self.map_scale_m + self.s0
+            row = self.l0 - y / self.map_scale_m
+            ok = (lat <= self.max_lat) & (row >= 0) & (row <= self.lines - 1) & (col >= 0) & (col <= self.samples - 1)
+            return row, col, ok
+        # Global cylindrical, pixel-registered: the first sample is centred half a pixel in from the edge.
+        col = (np.mod(lon, 360.0) * self.ppd - 0.5) % self.samples
+        row = np.clip((90.0 - lat) * self.ppd - 0.5, 0, self.lines - 1)
+        return row, col, np.ones(lat.shape, dtype=bool)
 
-    dtype = np.int16 if "INTEGER" in sample_type.upper() else np.uint16
-    raw = img_path.read_bytes()
-    arr = np.frombuffer(raw, dtype=dtype)
-    arr = arr.reshape(H, W).astype(np.float32)
-    arr = arr * scale  # metres above reference sphere (height only, no radius offset)
-
-    return DEM(data=arr, ppd=DEM_PPD, west_lon=west_lon, north_lat=north_lat, H=H, W=W)
-
-
-def fetch_dem() -> DEM:
-    DEM_DIR.mkdir(exist_ok=True)
-    img_dest = DEM_DIR / "LDEM_16.IMG"
-    lbl_dest = DEM_DIR / "LDEM_16.LBL"
-    if not img_dest.exists():
-        print("downloading LOLA GDR 16ppd (~33 MB) ...", flush=True)
-        tmp = img_dest.with_suffix(".part")
-        urllib.request.urlretrieve(DEM_URL, tmp)
-        tmp.rename(img_dest)
-        print("done.", flush=True)
-    if not lbl_dest.exists():
-        print("downloading LOLA label file ...", flush=True)
-        urllib.request.urlretrieve(DEM_LBL_URL, lbl_dest)
-    return load_lola_img(img_dest, lbl_dest)
-
-
-def dem_elev(dem: DEM, lat: float, lon: float) -> float:
-    """Bilinear-interpolated elevation in metres at (lat, lon)."""
-    lon_n = ((lon - dem.west_lon) % 360.0) * dem.ppd
-    lat_n = (dem.north_lat - lat) * dem.ppd
-    r0 = max(0, min(int(lat_n), dem.H - 1))
-    c0 = int(lon_n) % dem.W
-    r1 = min(r0 + 1, dem.H - 1)
-    c1 = (c0 + 1) % dem.W
-    fr = lat_n - int(lat_n)
-    fc = lon_n - int(lon_n)
-    return float(
-        dem.data[r0, c0] * (1 - fr) * (1 - fc)
-        + dem.data[r0, c1] * (1 - fr) * fc
-        + dem.data[r1, c0] * fr * (1 - fc)
-        + dem.data[r1, c1] * fr * fc
-    )
-
-
-def dest_latlon(lat0: float, lon0: float, az_rad: float, r_km: float) -> tuple[float, float]:
-    """Great-circle destination at bearing az_rad for r_km km."""
-    d = r_km / MOON_R_KM
-    lat0_r = lat0 * D2R
-    lon0_r = lon0 * D2R
-    lat1_r = math.asin(
-        math.sin(lat0_r) * math.cos(d)
-        + math.cos(lat0_r) * math.sin(d) * math.cos(az_rad)
-    )
-    lon1_r = lon0_r + math.atan2(
-        math.sin(az_rad) * math.sin(d) * math.cos(lat0_r),
-        math.cos(d) - math.sin(lat0_r) * math.sin(lat1_r),
-    )
-    return lat1_r / D2R, (lon1_r / D2R + 540) % 360 - 180
+    def height(self, row: np.ndarray, col: np.ndarray) -> np.ndarray:
+        """Bilinear height in metres above the 1737.4 km sphere."""
+        assert self.data is not None
+        r0 = np.clip(np.floor(row).astype(np.int64), 0, self.lines - 1)
+        c0 = np.floor(col).astype(np.int64)
+        fr, fc = row - r0, col - c0
+        r1 = np.clip(r0 + 1, 0, self.lines - 1)
+        if self.kind == "global":
+            c0, c1 = c0 % self.samples, (c0 + 1) % self.samples
+        else:
+            c0 = np.clip(c0, 0, self.samples - 1)
+            c1 = np.clip(c0 + 1, 0, self.samples - 1)
+        d = self.data
+        h = (
+            d[r0, c0] * (1 - fr) * (1 - fc)
+            + d[r0, c1] * (1 - fr) * fc
+            + d[r1, c0] * fr * (1 - fc)
+            + d[r1, c1] * fr * fc
+        )
+        return h * self.scale
 
 
-def horizon_elevations(dem: DEM, lat: float, lon: float) -> list[float]:
-    obs_m = dem_elev(dem, lat, lon) + OBS_HEIGHT_M
-    n_steps = int(MAX_RANGE_KM / STEP_KM)
-    result = []
-    for az_i in range(N_AZ):
-        az_rad = az_i * AZ_STEP * D2R
-        max_el = -90.0
-        for step in range(1, n_steps + 1):
-            r_km = step * STEP_KM
-            t_lat, t_lon = dest_latlon(lat, lon, az_rad, r_km)
-            t_m = dem_elev(dem, t_lat, t_lon)
-            dh_m = t_m - obs_m - (r_km ** 2) / (2 * MOON_R_KM) * 1000.0
-            el = math.degrees(math.atan2(dh_m, r_km * 1000.0))
-            if el > max_el:
-                max_el = el
-        result.append(round(max_el, 4))
-    return result
+def heights(dems: list[Dem], lat: np.ndarray, lon: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Height of each point from the finest model covering it, and the index of the model used."""
+    out = np.full(lat.shape, np.nan)
+    used = np.full(lat.shape, -1, dtype=np.int64)
+    for i, dem in enumerate(dems):
+        row, col, ok = dem.pixel(lat, lon)
+        take = ok & np.isnan(out)
+        if take.any():
+            out[take] = dem.height(row[take], col[take])
+            used[take] = i
+    return out, used
+
+
+def destination(lat0: float, lon0: float, az: np.ndarray, dist_m: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Great-circle destination points; az and dist broadcast against each other."""
+    d = dist_m / R_M
+    p0, l0 = np.radians(lat0), np.radians(lon0)
+    sin_p1 = np.sin(p0) * np.cos(d) + np.cos(p0) * np.sin(d) * np.cos(az)
+    p1 = np.arcsin(np.clip(sin_p1, -1.0, 1.0))
+    l1 = l0 + np.arctan2(np.sin(az) * np.sin(d) * np.cos(p0), np.cos(d) - np.sin(p0) * sin_p1)
+    return np.degrees(p1), np.degrees(l1)
+
+
+def horizon(dems: list[Dem], lat: float, lon: float) -> tuple[np.ndarray, float, float]:
+    site_h, site_used = heights(dems, np.array([lat]), np.array([lon]))
+    h0 = float(site_h[0]) + MAST_M
+    az = np.radians(np.arange(N_AZ) * 360.0 / N_AZ)[:, None]
+    dist = DIST_M[None, :]
+    plat, plon = destination(lat, lon, az, dist)
+    hp, _ = heights(dems, plat, plon)
+    # Exact elevation angle of a point at ground distance d and height hp, seen from height h0.
+    ang = dist / R_M
+    el = np.degrees(np.arctan2((R_M + hp) * np.cos(ang) - (R_M + h0), (R_M + hp) * np.sin(ang)))
+    return el.max(axis=1), float(site_h[0]), dems[int(site_used[0])].resolution_m
 
 
 def main() -> int:
-    sites = json.loads(SITES_JSON.read_text())
-    dem = fetch_dem()
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    fine = "--fine" in sys.argv or (DEM_DIR / "LDEM_80S_80M.IMG").exists()
+    dems = [
+        Dem("LDEM_75S_240M", f"{BASE}/POLAR/IMG", "polar_south"),
+        Dem("LDEM_16", f"{BASE}/CYLINDRICAL/IMG", "global"),
+    ]
+    if fine:
+        dems.insert(0, Dem("LDEM_80S_80M", f"{BASE}/POLAR/IMG", "polar_south"))
+    for dem in dems:
+        dem.load()
+    names = ", ".join(d.name for d in dems)
 
-    for site in sites:
-        sid = site["id"]
-        lat, lon = site["lat"], site["lon"]
-        print(f"computing horizon: {sid} ({lat:.3f}, {lon:.3f}) ...", flush=True)
-        elevs = horizon_elevations(dem, lat, lon)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    for site in json.loads(SITES_JSON.read_text()):
+        lat, lon = float(site["lat"]), float(site["lon"])
+        el, site_h, res = horizon(dems, lat, lon)
         out = {
-            "id": sid,
+            "id": site["id"],
             "lat": lat,
             "lon": lon,
-            # Field names follow the data contract in docs/PLAN.md (read by web/src/core/horizon.ts).
-            "az_step_deg": AZ_STEP,
-            "mast_m": OBS_HEIGHT_M,
-            "elev_deg": elevs,
-            "source": "LOLA GDR 16ppd LDEM_16.IMG",
-            "url": DEM_URL,
+            "az_step_deg": 360.0 / N_AZ,
+            "mast_m": MAST_M,
+            "elev_deg": [round(float(v), 4) for v in el],
+            "site_height_m": round(site_h, 1),
+            "resolution_m": round(res),
+            "source": f"LOLA GDR ({names}); finest model covering each point",
         }
-        (OUT_DIR / f"{sid}.json").write_text(json.dumps(out, separators=(",", ":")) + "\n")
-        print(f"  wrote {OUT_DIR}/{sid}.json", flush=True)
-
-    print("all horizons done.", flush=True)
+        (OUT_DIR / f"{site['id']}.json").write_text(json.dumps(out, separators=(",", ":")) + "\n")
+        print(
+            f"{site['id']:24s} height {site_h:8.1f} m  skyline {el.min():6.2f} .. {el.max():5.2f} deg  "
+            f"({res:.0f} m model at the site)",
+            flush=True,
+        )
     return 0
 
 

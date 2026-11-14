@@ -7,6 +7,11 @@ export interface HorizonProfile {
   az_step_deg: number
   mast_m: number
   elev_deg: number[]
+  /** Pixel size of the elevation model at the site, metres (optional metadata). */
+  resolution_m?: number
+  /** Terrain height at the site above the 1737.4 km sphere, metres (optional metadata). */
+  site_height_m?: number
+  source?: string
 }
 
 export interface Site {

@@ -92,11 +92,30 @@ export default function Readouts({
 }) {
   const sun = nextChange(events.sunlight, now.t)
   const earth = nextChange(events.dte, now.t)
-  const beyond = `more than ${duration(windowEnd - now.t)}`
+  const beyond = `over ${Math.floor((windowEnd - now.t) / 86400000)} days`
   const lit = now.sun.visibleFraction
+
+  // One plain-language sentence for people who do not read elevation angles.
+  const sunLine = sun.on
+    ? sun.at
+      ? `The Sun is up and sets in ${duration(sun.at - now.t)}.`
+      : 'The Sun is up and does not set for at least two months.'
+    : sun.at
+      ? `It is night here. The Sun rises in ${duration(sun.at - now.t)}.`
+      : 'It is night here, and the Sun does not rise for at least two months.'
+  const earthLine = earth.on
+    ? earth.at
+      ? `Earth is in view for another ${duration(earth.at - now.t)}, so the lander can talk to Earth directly.`
+      : 'Earth stays in view, so the lander can always talk to Earth directly.'
+    : earth.at
+      ? `Earth is hidden for another ${duration(earth.at - now.t)}; until then the lander needs a relay satellite.`
+      : 'Earth never comes into view from here, so the lander always needs a relay satellite.'
 
   return (
     <div className="flex flex-col gap-3">
+      <p className="rounded-xl border border-line bg-panel p-4 text-sm leading-relaxed" role="status">
+        {sunLine} {earthLine}
+      </p>
       <Body
         name="Sun"
         color="var(--color-sun)"

@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { horizonElevation, topo, type Site, type Topo } from '../core'
-import { DAY, HOUR } from '../lib/format'
+import { compass, DAY, HOUR } from '../lib/format'
 import { useSize } from '../lib/useSize'
 
 /**
@@ -18,6 +18,13 @@ interface Props {
 
 const PAD = { left: 44, right: 12, top: 12, bottom: 26 }
 
+type Zoom = 'auto' | 'horizon' | 'sky'
+const ZOOMS: { id: Zoom; label: string }[] = [
+  { id: 'auto', label: 'Fit' },
+  { id: 'horizon', label: 'Horizon' },
+  { id: 'sky', label: 'Whole sky' },
+]
+
 function niceStep(range: number): number {
   for (const s of [1, 2, 5, 10, 15, 30]) if (range / s <= 6) return s
   return 30
@@ -25,6 +32,8 @@ function niceStep(range: number): number {
 
 export default function Panorama({ site, now, windowStart, days }: Props) {
   const [ref, { width, height }] = useSize<HTMLDivElement>()
+  const [zoom, setZoom] = useState<Zoom>('auto')
+  const [pointer, setPointer] = useState<{ az: number; el: number } | null>(null)
 
   const model = useMemo(() => {
     const track: { sun: [number, number]; earth: [number, number] }[] = []
@@ -48,14 +57,18 @@ export default function Panorama({ site, now, windowStart, days }: Props) {
     const bottom = Math.min(-Math.max(3, Math.round(top * 0.22)), Math.floor(minSky - 1.5))
     // Centre the view on Earth so its small libration loop never straddles the edge.
     const centre = Math.round(topo(site, windowStart).earth.az / 45) * 45
-    return { track, skyline, top, bottom, centre }
+    return { track, skyline, top, bottom, centre, minSky }
   }, [site, windowStart, days])
 
   const W = Math.max(width, 200)
   const H = Math.max(height, 120)
   const iw = W - PAD.left - PAD.right
   const ih = H - PAD.top - PAD.bottom
-  const { top, bottom, centre } = model
+  const { centre } = model
+  // "Horizon" keeps the few degrees around the skyline, where polar sites live; "Whole sky" goes to the zenith.
+  const top = zoom === 'auto' ? model.top : zoom === 'horizon' ? 10 : 90
+  const bottom =
+    zoom === 'auto' ? model.bottom : zoom === 'horizon' ? Math.min(-4, Math.floor(model.minSky - 1.5)) : -12
   const x = (az: number) => PAD.left + ((((az - centre + 540) % 360) + 360) % 360) / 360 * iw
   const y = (el: number) => PAD.top + ((top - el) / (top - bottom)) * ih
   const pxPerDeg = ih / (top - bottom)
@@ -91,12 +104,45 @@ export default function Panorama({ site, now, windowStart, days }: Props) {
   const earthR = Math.max(5, now.earth.radius * pxPerDeg)
   const inView = (el: number) => el > bottom && el < top
 
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const px = e.clientX - r.left
+    const py = e.clientY - r.top
+    if (px < PAD.left || px > W - PAD.right || py < PAD.top || py > H - PAD.bottom) return setPointer(null)
+    const az = ((((px - PAD.left) / iw) * 360 + centre - 180) % 360 + 360) % 360
+    setPointer({ az, el: top - ((py - PAD.top) / ih) * (top - bottom) })
+  }
+  const skyAtPointer = pointer ? horizonElevation(site.horizon, pointer.az) : 0
+
   return (
-    <div ref={ref} className="h-full w-full">
+    <div ref={ref} className="relative h-full w-full">
+      <div className="absolute right-0 top-0 z-10 flex gap-1" role="group" aria-label="Vertical range of the sky view">
+        {ZOOMS.map((z) => (
+          <button
+            key={z.id}
+            className={`btn min-h-7! px-2! text-xs! ${zoom === z.id ? 'btn-primary' : ''}`}
+            aria-pressed={zoom === z.id}
+            onClick={() => setZoom(z.id)}
+          >
+            {z.label}
+          </button>
+        ))}
+      </div>
+      {pointer && (
+        <div className="num pointer-events-none absolute left-11 top-0 z-10 rounded bg-black/70 px-2 py-1 text-xs text-ink">
+          {compass(pointer.az)} {pointer.az.toFixed(0)}°, {pointer.el.toFixed(1)}° {pointer.el >= 0 ? 'up' : 'down'}
+          <span className="text-muted">
+            {' '}
+            (skyline here {skyAtPointer.toFixed(2)}°: {pointer.el > skyAtPointer ? 'open sky' : 'behind terrain'})
+          </span>
+        </div>
+      )}
       {width > 0 && (
         <svg
           width={W}
           height={H}
+          onPointerMove={onMove}
+          onPointerLeave={() => setPointer(null)}
           role="img"
           aria-label={`Sky at ${site.name}: Sun ${now.sun.el.toFixed(1)} degrees, Earth ${now.earth.el.toFixed(1)} degrees above the horizon`}
         >
@@ -141,6 +187,10 @@ export default function Panorama({ site, now, windowStart, days }: Props) {
               strokeWidth="1.25"
             />
           </g>
+
+          {pointer && (
+            <line x1={x(pointer.az)} x2={x(pointer.az)} y1={PAD.top} y2={H - PAD.bottom} stroke="#969aa3" strokeWidth="1" strokeDasharray="3 3" />
+          )}
 
           {compassPts.map((az) => (
             <text
