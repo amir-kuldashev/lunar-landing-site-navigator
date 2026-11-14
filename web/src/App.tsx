@@ -1,13 +1,16 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { events, getEphemeris, loadEphemeris, summary, topo, type HorizonProfile, type Site } from './core'
 import { DAY, HOUR, dateUTC, fromInputValue, latLon, timeUTC, toInputValue } from './lib/format'
+import type { Mission } from './lib/scoring'
 import { buildUrl, readUrlState } from './lib/urlState'
+import BestDates from './views/BestDates'
 import Compare, { type Scenario } from './views/Compare'
 import Panorama from './views/Panorama'
 import Readouts from './views/Readouts'
-import Recommend from './views/Recommend'
+import Recommend, { type RankView } from './views/Recommend'
 import ScheduleSlip from './views/ScheduleSlip'
 import Timeline from './views/Timeline'
+import Tour, { type TourActions } from './views/Tour'
 import YearStrip from './views/YearStrip'
 
 // three.js is the heaviest part of the page; load it after the instruments are on screen.
@@ -35,6 +38,14 @@ export default function App() {
   const [t, setT] = useState(() => INITIAL.t ?? Date.UTC(2027, 0, 1))
   const [windowStart, setWindowStart] = useState(() => startOfDay(INITIAL.t ?? Date.UTC(2027, 0, 1)))
   const [copied, setCopied] = useState(false)
+  // One mission setting for every ranking view on the page.
+  const [mission, setMission] = useState<Mission>({ days: 14, priority: 'balanced' })
+  // ?rank=map opens straight on the south-pole map, so a link can point at it.
+  const [rankView, setRankView] = useState<RankView>(() =>
+    new URLSearchParams(window.location.search).get('rank') === 'map' ? 'map' : 'list',
+  )
+  // ?tour=1 starts the guided tour straight away, for links aimed at first-time visitors.
+  const [touring, setTouring] = useState(() => new URLSearchParams(window.location.search).get('tour') === '1')
   const [globeView, setGlobeView] = useState<GlobeView>(() =>
     new URLSearchParams(window.location.search).get('view') === 'system' ? 'system' : 'site',
   )
@@ -155,6 +166,13 @@ export default function App() {
         .filter((s, i, a) => a.findIndex((x) => x.key === s.key) === i)
         .slice(-6),
     )
+  const tourActions: TourActions = {
+    openSite: (id) => catalog.some((s) => s.id === id) && setSiteId(id),
+    setTime: changeTime,
+    setPlaying,
+    setGlobeView,
+    setRankView,
+  }
   const openScenario = (s: Scenario) => {
     if (s.site.id === 'custom') setCustom(s.site)
     setSiteId(s.site.id)
@@ -273,6 +291,9 @@ export default function App() {
           >
             {copied ? 'Link copied' : 'Copy link'}
           </button>
+          <button className="btn" onClick={() => setTouring(true)} aria-haspopup="dialog">
+            Take the tour
+          </button>
         </div>
       </header>
 
@@ -284,7 +305,7 @@ export default function App() {
         </p>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(340px,1fr)]">
+      <div id="sec-moon" className="grid scroll-mt-24 gap-4 rounded-xl lg:grid-cols-[minmax(0,1.5fr)_minmax(340px,1fr)]">
         <section
           className="enter-fade relative h-[46vh] min-h-[320px] overflow-hidden rounded-xl border border-line lg:h-auto lg:min-h-[440px]"
           aria-label="Moon"
@@ -351,12 +372,22 @@ export default function App() {
         </div>
       </div>
 
-      <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '160ms' }}>
+      <section id="sec-rank" className="enter scroll-mt-24 rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '160ms' }}>
         <h2 className="mb-3 text-sm font-medium">Best sites for this date</h2>
-        <Recommend sites={catalog} t={t} current={site} onOpen={setSiteId} onPickPoint={pickPoint} />
+        <Recommend
+          sites={catalog}
+          t={t}
+          current={site}
+          onOpen={setSiteId}
+          onPickPoint={pickPoint}
+          mission={mission}
+          onMission={setMission}
+          view={rankView}
+          onView={setRankView}
+        />
       </section>
 
-      <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '200ms' }}>
+      <section id="sec-sky" className="enter scroll-mt-24 rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '200ms' }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-medium">
             Sky from the site
@@ -398,8 +429,19 @@ export default function App() {
         </div>
       </section>
 
-      <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '220ms' }}>
-        <h2 className="mb-3 text-sm font-medium">The whole year at this site</h2>
+      <section id="sec-year" className="enter scroll-mt-24 rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '220ms' }}>
+        <h2 className="mb-3 text-sm font-medium">The best dates to land at this site</h2>
+        <BestDates
+          site={site}
+          t={t}
+          mission={mission}
+          onMission={setMission}
+          onChange={(next) => {
+            setPlaying(false)
+            changeTime(next)
+          }}
+        />
+        <h3 className="mb-3 mt-6 border-t border-line pt-4 text-sm font-medium">Day by day through the year</h3>
         <YearStrip
           site={site}
           t={t}
@@ -424,7 +466,7 @@ export default function App() {
         />
       </section>
 
-      <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '280ms' }}>
+      <section id="sec-compare" className="enter scroll-mt-24 rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '280ms' }}>
         <h2 className="mb-3 text-sm font-medium">Compare scenarios</h2>
         <Compare
           scenarios={pinned}
@@ -433,6 +475,8 @@ export default function App() {
           onRemove={(key) => setPinned((p) => p.filter((s) => s.key !== key))}
         />
       </section>
+
+      {touring && <Tour actions={tourActions} onClose={() => setTouring(false)} />}
 
       <footer className="max-w-4xl text-xs leading-relaxed text-muted">
         This tool assesses sunlight and direct Earth contact. It does not assess whether the ground is safe to

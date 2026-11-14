@@ -62,7 +62,11 @@ specialists, and comparing several site and date options with them is slow.
 - Pin several site and date scenarios and compare them in one table.
 - Ask which site is best for a date: the tool ranks the named sites, or scores the whole south polar region
   cell by cell on a map, using each cell's own terrain skyline and leaving out steep ground.
+- Ask when to land: for a fixed site, the tool scores every landing date over the next 12 months and marks
+  the best ones.
+- Compare pinned scenarios as numbers and as skies drawn side by side on one scale.
 - See a whole year at one site at a glance, and share any view as a link.
+- Take a six-step guided tour that explains, in plain words, why the south pole is hard.
 
 *How it works.*
 Sun and Earth positions are precomputed from NASA's SPICE ephemeris (DE440) in the Moon's body-fixed frame for

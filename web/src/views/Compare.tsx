@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { summary, topo, type Site } from '../core'
-import { dateUTC, deg, duration, timeUTC } from '../lib/format'
+import { DAY, dateUTC, deg, duration, timeUTC } from '../lib/format'
+import Panorama, { skyModel } from './Panorama'
 
 /** Pinned site + date scenarios side by side, so a schedule slip or a site change can be judged at a glance. */
 
@@ -44,6 +45,19 @@ export default function Compare({
       }),
     [scenarios, days],
   )
+
+  // One vertical scale for every sky, so heights can be compared by eye.
+  const skies = useMemo(() => {
+    const items = scenarios.map((s) => {
+      const windowStart = Math.floor(s.t / DAY) * DAY
+      return { ...s, windowStart, now: topo(s.site, s.t), fit: skyModel(s.site, windowStart, days) }
+    })
+    const range: [number, number] = [
+      Math.min(...items.map((i) => i.fit.bottom)),
+      Math.max(...items.map((i) => i.fit.top)),
+    ]
+    return { items, range }
+  }, [scenarios, days])
 
   if (rows.length === 0) {
     return (
@@ -105,6 +119,33 @@ export default function Compare({
           ))}
         </tbody>
       </table>
+
+      {skies.items.length >= 2 && (
+        <div className="mt-6 min-w-[640px]">
+          <h3 className="text-sm font-medium">The skies side by side</h3>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted">
+            Each strip is the sky from one pinned scenario, all on the same vertical scale ({skies.range[0]}° to{' '}
+            {skies.range[1]}°) and each centred on Earth. The grey shape is the terrain, the dotted line is the Sun's
+            path over {days} days and the blue line is Earth's. Where a path drops behind the terrain, that site loses
+            sunlight or contact.
+          </p>
+          <div className="mt-3 space-y-4">
+            {skies.items.map((s) => (
+              <div key={s.key}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                  <span>{s.site.name}</span>
+                  <span className="num text-xs text-muted">
+                    {dateUTC(s.t)}, {timeUTC(s.t)} UTC
+                  </span>
+                </div>
+                <div className="mt-1 h-[150px]">
+                  <Panorama site={s.site} now={s.now} windowStart={s.windowStart} days={days} range={skies.range} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

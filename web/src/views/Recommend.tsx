@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { summary, topo, type HorizonProfile, type Site } from '../core'
 import { HOUR, dateUTC, duration } from '../lib/format'
+import { priorityOf, type Mission } from '../lib/scoring'
+import MissionControls from './MissionControls'
 import PolarMap from './PolarMap'
 
 /**
@@ -15,19 +17,14 @@ interface Props {
   onOpen: (id: string) => void
   /** Open an arbitrary point (from the south-pole map) with its own terrain skyline. */
   onPickPoint: (lat: number, lon: number, horizon: HorizonProfile) => void
+  mission: Mission
+  onMission: (m: Mission) => void
+  /** Which ranking is showing: the named sites, or the whole south pole on a map. */
+  view: RankView
+  onView: (v: RankView) => void
 }
 
-type Priority = 'balanced' | 'power' | 'comms'
-
-const PRIORITIES: { id: Priority; label: string; weights: [number, number, number]; blurb: string }[] = [
-  { id: 'balanced', label: 'Balanced', weights: [0.3, 0.3, 0.4], blurb: 'sunlight 30%, Earth contact 30%, both at once 40%' },
-  { id: 'power', label: 'Power first', weights: [0.6, 0.2, 0.2], blurb: 'sunlight 60%, Earth contact 20%, both at once 20%' },
-  { id: 'comms', label: 'Contact first', weights: [0.2, 0.6, 0.2], blurb: 'sunlight 20%, Earth contact 60%, both at once 20%' },
-]
-const LENGTHS = [
-  { days: 14, label: '14 days' },
-  { days: 30, label: '30 days' },
-]
+export type RankView = 'list' | 'map'
 
 interface Row {
   site: Site
@@ -40,14 +37,10 @@ interface Row {
   earthAtArrival: boolean
 }
 
-export default function Recommend({ sites, t, current, onOpen, onPickPoint }: Props) {
+export default function Recommend({ sites, t, current, onOpen, onPickPoint, mission, onMission, view, onView }: Props) {
+  const { days, priority } = mission
+  const setView = onView
   const currentId = current.id
-  // ?rank=map opens straight on the south-pole map, so a link can point at it.
-  const [view, setView] = useState<'list' | 'map'>(() =>
-    new URLSearchParams(window.location.search).get('rank') === 'map' ? 'map' : 'list',
-  )
-  const [priority, setPriority] = useState<Priority>('balanced')
-  const [days, setDays] = useState(14)
   const [polarOnly, setPolarOnly] = useState(false)
   const [showAll, setShowAll] = useState(false)
 
@@ -73,7 +66,7 @@ export default function Recommend({ sites, t, current, onOpen, onPickPoint }: Pr
   )
 
   const rows: Row[] = useMemo(() => {
-    const [wSolar, wDte, wBoth] = PRIORITIES.find((p) => p.id === priority)!.weights
+    const [wSolar, wDte, wBoth] = priorityOf(priority).weights
     return measured
       .filter((r) => !polarOnly || r.site.lat <= -80)
       .map((r) => ({ ...r, score: wSolar * r.solar + wDte * r.dte + wBoth * r.both }))
@@ -95,22 +88,7 @@ export default function Recommend({ sites, t, current, onOpen, onPickPoint }: Pr
             Whole south pole
           </button>
         </div>
-        <div className="flex items-center gap-1.5" role="group" aria-label="Mission length">
-          <span>Mission length</span>
-          {LENGTHS.map((l) => (
-            <button key={l.days} className={toggle(days === l.days)} aria-pressed={days === l.days} onClick={() => setDays(l.days)}>
-              {l.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1.5" role="group" aria-label="Priority">
-          <span>Priority</span>
-          {PRIORITIES.map((p) => (
-            <button key={p.id} className={toggle(priority === p.id)} aria-pressed={priority === p.id} onClick={() => setPriority(p.id)}>
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <MissionControls mission={mission} onChange={onMission} />
         {view === 'list' && (
           <label className="flex cursor-pointer items-center gap-2">
             <input type="checkbox" className="accent-(--color-ink)" checked={polarOnly} onChange={(e) => setPolarOnly(e.target.checked)} />
@@ -125,12 +103,12 @@ export default function Recommend({ sites, t, current, onOpen, onPickPoint }: Pr
             sites={sites}
             t={t}
             days={days}
-            weights={PRIORITIES.find((p) => p.id === priority)!.weights}
+            weights={priorityOf(priority).weights}
             current={current}
             onPick={onPickPoint}
           />
           <p className="mt-3 max-w-3xl text-xs leading-relaxed text-muted">
-            Score out of 100: {PRIORITIES.find((p) => p.id === priority)!.blurb}, over the mission length.
+            Score out of 100: {priorityOf(priority).blurb}, over the mission length.
           </p>
         </>
       )}
@@ -200,7 +178,7 @@ export default function Recommend({ sites, t, current, onOpen, onPickPoint }: Pr
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-3xl text-xs leading-relaxed text-muted">
-          Score out of 100: {PRIORITIES.find((p) => p.id === priority)!.blurb}, over the mission length. "Sunlight" is the
+          Score out of 100: {priorityOf(priority).blurb}, over the mission length. "Sunlight" is the
           average share of the Sun's disk above the skyline. Sites that are sunlit on arrival rank above sites that are
           dark, since most landers need light to touch down. The ranking covers only the sites in this list and only
           sunlight and Earth contact; it does not weigh science value, terrain safety or how reachable a site is.

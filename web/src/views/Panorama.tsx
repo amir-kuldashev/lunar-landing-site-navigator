@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { horizonElevation, topo, type Site, type Topo } from '../core'
 import { compass, DAY, HOUR } from '../lib/format'
 import { useSize } from '../lib/useSize'
@@ -14,6 +14,8 @@ interface Props {
   /** Start of the 30-day window the paths are drawn for. */
   windowStart: number
   days: number
+  /** Fixed vertical range in degrees [bottom, top]. Used when several skies are compared on one scale. */
+  range?: [number, number]
 }
 
 const PAD = { left: 44, right: 12, top: 12, bottom: 26 }
@@ -30,35 +32,39 @@ function niceStep(range: number): number {
   return 30
 }
 
-export default function Panorama({ site, now, windowStart, days }: Props) {
+/** Everything the panorama draws for one site and window, plus the vertical range that fits it. */
+export function skyModel(site: Site, windowStart: number, days: number) {
+  const track: { sun: [number, number]; earth: [number, number] }[] = []
+  let maxEl = -90
+  for (let t = windowStart; t <= windowStart + days * DAY; t += 2 * HOUR) {
+    const v = topo(site, t)
+    track.push({ sun: [v.sun.az, v.sun.el], earth: [v.earth.az, v.earth.el] })
+    maxEl = Math.max(maxEl, v.sun.el, v.earth.el)
+  }
+  const skyline: [number, number][] = []
+  let maxSky = -90
+  let minSky = 90
+  for (let az = 0; az <= 360; az += 1) {
+    const el = horizonElevation(site.horizon, az)
+    skyline.push([az, el])
+    maxSky = Math.max(maxSky, el)
+    minSky = Math.min(minSky, el)
+  }
+  const top = Math.min(90, Math.max(6, Math.ceil(Math.max(maxEl, maxSky) * 1.15 + 1)))
+  // Leave room under the lowest point of the skyline (a ridge-top site looks down on its horizon).
+  const bottom = Math.min(-Math.max(3, Math.round(top * 0.22)), Math.floor(minSky - 1.5))
+  // Centre the view on Earth so its small libration loop never straddles the edge.
+  const centre = Math.round(topo(site, windowStart).earth.az / 45) * 45
+  return { track, skyline, top, bottom, centre, minSky }
+}
+
+export default function Panorama({ site, now, windowStart, days, range }: Props) {
+  const uid = useId()
   const [ref, { width, height }] = useSize<HTMLDivElement>()
   const [zoom, setZoom] = useState<Zoom>('auto')
   const [pointer, setPointer] = useState<{ az: number; el: number } | null>(null)
 
-  const model = useMemo(() => {
-    const track: { sun: [number, number]; earth: [number, number] }[] = []
-    let maxEl = -90
-    for (let t = windowStart; t <= windowStart + days * DAY; t += 2 * HOUR) {
-      const v = topo(site, t)
-      track.push({ sun: [v.sun.az, v.sun.el], earth: [v.earth.az, v.earth.el] })
-      maxEl = Math.max(maxEl, v.sun.el, v.earth.el)
-    }
-    const skyline: [number, number][] = []
-    let maxSky = -90
-    let minSky = 90
-    for (let az = 0; az <= 360; az += 1) {
-      const el = horizonElevation(site.horizon, az)
-      skyline.push([az, el])
-      maxSky = Math.max(maxSky, el)
-      minSky = Math.min(minSky, el)
-    }
-    const top = Math.min(90, Math.max(6, Math.ceil(Math.max(maxEl, maxSky) * 1.15 + 1)))
-    // Leave room under the lowest point of the skyline (a ridge-top site looks down on its horizon).
-    const bottom = Math.min(-Math.max(3, Math.round(top * 0.22)), Math.floor(minSky - 1.5))
-    // Centre the view on Earth so its small libration loop never straddles the edge.
-    const centre = Math.round(topo(site, windowStart).earth.az / 45) * 45
-    return { track, skyline, top, bottom, centre, minSky }
-  }, [site, windowStart, days])
+  const model = useMemo(() => skyModel(site, windowStart, days), [site, windowStart, days])
 
   const W = Math.max(width, 200)
   const H = Math.max(height, 120)
@@ -66,9 +72,14 @@ export default function Panorama({ site, now, windowStart, days }: Props) {
   const ih = H - PAD.top - PAD.bottom
   const { centre } = model
   // "Horizon" keeps the few degrees around the skyline, where polar sites live; "Whole sky" goes to the zenith.
-  const top = zoom === 'auto' ? model.top : zoom === 'horizon' ? 10 : 90
-  const bottom =
-    zoom === 'auto' ? model.bottom : zoom === 'horizon' ? Math.min(-4, Math.floor(model.minSky - 1.5)) : -12
+  const top = range ? range[1] : zoom === 'auto' ? model.top : zoom === 'horizon' ? 10 : 90
+  const bottom = range
+    ? range[0]
+    : zoom === 'auto'
+      ? model.bottom
+      : zoom === 'horizon'
+        ? Math.min(-4, Math.floor(model.minSky - 1.5))
+        : -12
   const x = (az: number) => PAD.left + ((((az - centre + 540) % 360) + 360) % 360) / 360 * iw
   const y = (el: number) => PAD.top + ((top - el) / (top - bottom)) * ih
   const pxPerDeg = ih / (top - bottom)
@@ -116,7 +127,11 @@ export default function Panorama({ site, now, windowStart, days }: Props) {
 
   return (
     <div ref={ref} className="relative h-full w-full">
-      <div className="absolute right-0 top-0 z-10 flex gap-1" role="group" aria-label="Vertical range of the sky view">
+      <div
+        className={`absolute right-0 top-0 z-10 gap-1 ${range ? 'hidden' : 'flex'}`}
+        role="group"
+        aria-label="Vertical range of the sky view"
+      >
         {ZOOMS.map((z) => (
           <button
             key={z.id}
@@ -147,10 +162,10 @@ export default function Panorama({ site, now, windowStart, days }: Props) {
           aria-label={`Sky at ${site.name}: Sun ${now.sun.el.toFixed(1)} degrees, Earth ${now.earth.el.toFixed(1)} degrees above the horizon`}
         >
           <defs>
-            <clipPath id="pano-clip">
+            <clipPath id={`${uid}-clip`}>
               <rect x={PAD.left} y={PAD.top} width={iw} height={ih} />
             </clipPath>
-            <linearGradient id="pano-ground" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={`${uid}-ground`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor="#6b6862" />
               <stop offset="1" stopColor="#2b2a28" />
             </linearGradient>
@@ -165,7 +180,7 @@ export default function Panorama({ site, now, windowStart, days }: Props) {
             </g>
           ))}
 
-          <g clipPath="url(#pano-clip)">
+          <g clipPath={`url(#${uid}-clip)`}>
             <path d={path(model.track.map((p) => p.sun))} fill="none" stroke="#f4c55a" strokeWidth="1.5" strokeDasharray="2 5" strokeLinecap="round" opacity="0.75" />
             <path d={path(model.track.map((p) => p.earth))} fill="none" stroke="#58a6e8" strokeWidth="1.5" opacity="0.7" />
 
@@ -179,7 +194,7 @@ export default function Panorama({ site, now, windowStart, days }: Props) {
               <circle cx={x(now.earth.az)} cy={y(now.earth.el)} r={earthR} fill="#58a6e8" stroke="#bfe0fb" strokeWidth="1" />
             )}
 
-            <path d={ground} fill="url(#pano-ground)" opacity="0.93" />
+            <path d={ground} fill={`url(#${uid}-ground)`} opacity="0.93" />
             <path
               d={'M' + sky.map(([px, py]) => `${px.toFixed(1)} ${py.toFixed(1)}`).join('L')}
               fill="none"
