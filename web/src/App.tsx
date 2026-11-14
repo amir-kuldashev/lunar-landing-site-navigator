@@ -5,12 +5,14 @@ import { buildUrl, readUrlState } from './lib/urlState'
 import Compare, { type Scenario } from './views/Compare'
 import Panorama from './views/Panorama'
 import Readouts from './views/Readouts'
+import Recommend from './views/Recommend'
 import ScheduleSlip from './views/ScheduleSlip'
 import Timeline from './views/Timeline'
 import YearStrip from './views/YearStrip'
 
 // three.js is the heaviest part of the page; load it after the instruments are on screen.
 const Globe = lazy(() => import('./views/Globe'))
+type GlobeView = 'site' | 'system'
 
 const WINDOW_DAYS = 30
 const SPEEDS = [
@@ -33,6 +35,9 @@ export default function App() {
   const [t, setT] = useState(() => INITIAL.t ?? Date.UTC(2027, 0, 1))
   const [windowStart, setWindowStart] = useState(() => startOfDay(INITIAL.t ?? Date.UTC(2027, 0, 1)))
   const [copied, setCopied] = useState(false)
+  const [globeView, setGlobeView] = useState<GlobeView>(() =>
+    new URLSearchParams(window.location.search).get('view') === 'system' ? 'system' : 'site',
+  )
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [pinned, setPinned] = useState<Scenario[]>([])
@@ -271,7 +276,7 @@ export default function App() {
           aria-label="Moon"
         >
           <Suspense fallback={<div className="grid h-full place-items-center text-sm text-muted">Loading the 3D Moon…</div>}>
-            <Globe sites={sites} site={site} now={now} onSelect={setSiteId} onPick={pickPoint} />
+            <Globe sites={sites} site={site} now={now} view={globeView} onSelect={setSiteId} onPick={pickPoint} />
           </Suspense>
           <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-4">
             <div>
@@ -281,10 +286,28 @@ export default function App() {
             <div className="text-right">
               <div className="num text-lg leading-tight">{timeUTC(t)} UTC</div>
               <div className="num mt-0.5 text-xs text-muted">{dateUTC(t)}</div>
+              <div className="pointer-events-auto mt-2 flex justify-end gap-1" role="group" aria-label="3D view">
+                {(
+                  [
+                    ['site', 'Landing site'],
+                    ['system', 'Sun, Moon and Earth'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    className={`btn min-h-7! px-2! text-xs! ${globeView === id ? 'btn-primary' : ''}`}
+                    aria-pressed={globeView === id}
+                    onClick={() => setGlobeView(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <p className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-xs text-muted">
-            Drag to turn the Moon. Double-click the surface to place a custom point.
+            Drag to turn the Moon. Double-click the surface to place a custom point. Sizes and distances are not to
+            scale; directions are true.
             {site.source_url && (
               <>
                 {' '}
@@ -313,6 +336,11 @@ export default function App() {
           />
         </div>
       </div>
+
+      <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '160ms' }}>
+        <h2 className="mb-3 text-sm font-medium">Best sites for this date</h2>
+        <Recommend sites={catalog} t={t} currentId={site.id} onOpen={setSiteId} />
+      </section>
 
       <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '200ms' }}>
         <div className="flex flex-wrap items-center justify-between gap-3">

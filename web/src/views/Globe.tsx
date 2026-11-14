@@ -180,44 +180,136 @@ function SiteGeometry({ site, now }: { site: Site; now: Topo }) {
   )
 }
 
-/** Sunlight, faint earthshine, and Earth itself (not to scale) in its true direction. */
+/** A soft glowing disc for the Sun, drawn once on a canvas. */
+function useSunTexture() {
+  return useMemo(() => {
+    const size = 256
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = size
+    const ctx = canvas.getContext('2d')!
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+    g.addColorStop(0, 'rgba(255,255,255,1)')
+    g.addColorStop(0.1, 'rgba(255,248,225,1)')
+    g.addColorStop(0.16, 'rgba(255,226,150,0.85)')
+    g.addColorStop(0.35, 'rgba(244,197,90,0.28)')
+    g.addColorStop(1, 'rgba(244,197,90,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, size, size)
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }, [])
+}
+
+function useEarthTexture() {
+  const [map, setMap] = useState<THREE.Texture | null>(null)
+  useEffect(() => {
+    new THREE.TextureLoader().load(
+      `${import.meta.env.BASE_URL}textures/earth_color.jpg`,
+      (t) => {
+        t.colorSpace = THREE.SRGBColorSpace
+        setMap(t)
+      },
+      undefined,
+      () => console.warn('Earth texture missing; using a plain blue sphere'),
+    )
+  }, [])
+  return map
+}
+
+// Schematic distance for the Sun marker, so it can share a frame with Earth. Its direction is true.
+const SUN_DISTANCE = 7
+const EARTH_TILT = (23.4 * Math.PI) / 180
+const EARTH_TURN_MS = 24.84 * 3600000 // one turn as seen from the Moon
+
+/**
+ * The Sun and Earth, each in its true direction from the Moon for the chosen time.
+ * Directions and Earth's lit phase are real; sizes and distances are not to scale, and Earth's
+ * spin is only approximate (the right rate, not the exact face).
+ */
 function Sky({ t }: { t: number }) {
   const { sun, earth } = getEphemeris().sunEarth(t)
-  const sunPos = unit(sun).multiplyScalar(60)
-  const earthPos = unit(earth).multiplyScalar(5.4)
+  const sunDir = unit(sun)
+  const sunPos = sunDir.clone().multiplyScalar(60)
+  const earthPos = unit(earth).multiplyScalar(6)
+  const sunTex = useSunTexture()
+  const earthTex = useEarthTexture()
+  const spin = ((t % EARTH_TURN_MS) / EARTH_TURN_MS) * Math.PI * 2
   return (
     <>
       <ambientLight intensity={0.16} />
       <directionalLight position={sunPos} intensity={3.4} color="#fff6e6" />
-      <mesh position={earthPos}>
-        <sphereGeometry args={[0.2, 48, 24]} />
-        <meshStandardMaterial color="#3f86cf" emissive="#0d2a4a" emissiveIntensity={0.6} roughness={0.9} />
-      </mesh>
+
+      <group position={sunDir.clone().multiplyScalar(SUN_DISTANCE)}>
+        <sprite scale={[4, 4, 1]}>
+          <spriteMaterial map={sunTex} blending={THREE.AdditiveBlending} depthWrite={false} transparent toneMapped={false} />
+        </sprite>
+        <Html center style={{ pointerEvents: 'none' }} zIndexRange={[5, 0]}>
+          <span className="block translate-y-10 whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-sun">Sun</span>
+        </Html>
+      </group>
+
+      <group position={earthPos}>
+        <group rotation={[EARTH_TILT, 0, 0]}>
+          <mesh rotation={[0, spin, 0]}>
+            <sphereGeometry args={[0.6, 64, 32]} />
+            <meshStandardMaterial
+              key={earthTex ? 'tex' : 'plain'}
+              map={earthTex}
+              color={earthTex ? '#ffffff' : '#3f86cf'}
+              emissive="#0a1c33"
+              emissiveIntensity={0.5}
+              roughness={0.85}
+              metalness={0}
+            />
+          </mesh>
+        </group>
+        {/* Thin blue rim for the atmosphere. */}
+        <mesh>
+          <sphereGeometry args={[0.64, 48, 24]} />
+          <meshBasicMaterial color="#6cb6ff" transparent opacity={0.16} side={THREE.BackSide} depthWrite={false} />
+        </mesh>
+        <Html center style={{ pointerEvents: 'none' }} zIndexRange={[5, 0]}>
+          <span className="block translate-y-10 whitespace-nowrap text-xs font-medium text-earth">Earth</span>
+        </Html>
+      </group>
     </>
   )
 }
 
 /** Flies the camera to look down on the selected site; a drag by the visitor cancels the flight. */
-function CameraRig({ site, flyKey }: { site: Site; flyKey: string }) {
+function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view: GlobeView; t: number }) {
   const { camera } = useThree()
   const controls = useRef<OrbitControlsImpl>(null)
   const reduced = useReducedMotion()
   const flight = useRef<{ dir: THREE.Vector3; dist: number } | null>(null)
 
   useEffect(() => {
-    const dir = unit(siteVector(site.lat, site.lon, 0))
-    // Sit a little off the vertical so the horizon disc and pointers read in perspective.
-    const side = new THREE.Vector3(0, 1, 0).cross(dir)
-    if (side.lengthSq() < 1e-4) side.set(1, 0, 0)
-    dir.addScaledVector(side.normalize(), 0.35).normalize()
+    let dir = unit(siteVector(site.lat, site.lon, 0))
+    let dist = 3.1
+    if (view === 'system') {
+      // Stand back, square-on to the plane holding the Sun, Moon and Earth, on the site's side of it.
+      const { sun, earth } = getEphemeris().sunEarth(t)
+      const normal = unit(earth).cross(unit(sun))
+      if (normal.lengthSq() < 1e-4) normal.set(0, 1, 0)
+      normal.normalize()
+      if (normal.dot(dir) < 0) normal.negate()
+      dir = normal
+      dist = 23
+    } else {
+      // Sit a little off the vertical so the horizon disc and pointers read in perspective.
+      const side = new THREE.Vector3(0, 1, 0).cross(dir)
+      if (side.lengthSq() < 1e-4) side.set(1, 0, 0)
+      dir.addScaledVector(side.normalize(), 0.35).normalize()
+    }
     if (reduced) {
-      camera.position.copy(dir.multiplyScalar(3.1))
+      camera.position.copy(dir.multiplyScalar(dist))
       camera.lookAt(0, 0, 0)
       flight.current = null
     } else {
-      flight.current = { dir, dist: 3.1 }
+      flight.current = { dir, dist }
     }
-  }, [flyKey, reduced]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [flyKey, view, reduced]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useFrame((_, dt) => {
     const f = flight.current
@@ -240,7 +332,7 @@ function CameraRig({ site, flyKey }: { site: Site; flyKey: string }) {
       dampingFactor={0.08}
       rotateSpeed={0.5}
       minDistance={1.35}
-      maxDistance={9}
+      maxDistance={44}
       onStart={() => {
         flight.current = null
       }}
@@ -248,7 +340,11 @@ function CameraRig({ site, flyKey }: { site: Site; flyKey: string }) {
   )
 }
 
+/** "site" looks down on the landing site; "system" pulls back to show the Moon, Earth and Sun together. */
+export type GlobeView = 'site' | 'system'
+
 export interface GlobeProps {
+  view: GlobeView
   sites: Site[]
   site: Site
   now: Topo
@@ -256,7 +352,7 @@ export interface GlobeProps {
   onPick: (lat: number, lon: number) => void
 }
 
-export default function Globe({ sites, site, now, onSelect, onPick }: GlobeProps) {
+export default function Globe({ sites, site, now, view, onSelect, onPick }: GlobeProps) {
   return (
     <Canvas
       camera={{ position: [0, 0.6, 7.5], fov: 34, near: 0.05, far: 400 }}
@@ -273,7 +369,7 @@ export default function Globe({ sites, site, now, onSelect, onPick }: GlobeProps
         <SitePin key={s.id} site={s} selected={s.id === site.id} onSelect={onSelect} />
       ))}
       <SiteGeometry site={site} now={now} />
-      <CameraRig site={site} flyKey={`${site.id}:${site.lat.toFixed(3)}:${site.lon.toFixed(3)}`} />
+      <CameraRig site={site} view={view} t={now.t} flyKey={`${site.id}:${site.lat.toFixed(3)}:${site.lon.toFixed(3)}`} />
     </Canvas>
   )
 }

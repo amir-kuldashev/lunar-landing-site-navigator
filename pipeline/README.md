@@ -30,6 +30,7 @@ Downloaded artefacts are git-ignored:
 | LOLA GDR south polar, 240 m/pixel (75S to pole) | https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDEM_75S_240M.IMG | build_horizons.py |
 | LOLA GDR global, 16 pixels/degree (about 1.9 km) | https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/LDEM_16.IMG | build_horizons.py |
 | NASA SVS CGI Moon Kit (colour and elevation textures) | https://svs.gsfc.nasa.gov/4720 | web/public/textures |
+| NASA SVS Blue Marble Earth map (visualization 3615) | https://svs.gsfc.nasa.gov/3615 | web/public/textures/earth_color.jpg |
 
 **LOLA GDR citation:**
 Smith, D.E., et al. (2010). The Lunar Orbiter Laser Altimeter Investigation on the Lunar Reconnaissance Orbiter Mission. *Space Sci Rev*, 150, 209-241. https://doi.org/10.1007/s11214-009-9512-y
