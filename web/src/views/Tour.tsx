@@ -196,6 +196,8 @@ export default function Tour({
   const [i, setI] = useState(() => Math.min(Math.max(startAt, 0), STEPS.length - 1))
   const [layout, setLayout] = useState<Layout | null>(null)
   const [cardH, setCardH] = useState(240)
+  /** False while a step is being set up and scrolled to, so nothing is drawn half-way there. */
+  const [shown, setShown] = useState(false)
   const reduced = useReducedMotion()
   const card = useRef<HTMLElement>(null)
   const next = useRef<HTMLButtonElement>(null)
@@ -203,8 +205,28 @@ export default function Tour({
   const last = i === STEPS.length - 1
   const cardW = Math.min(CARD_W, (typeof window !== 'undefined' ? window.innerWidth : CARD_W) - 24)
 
-  // Set the scene for this step, bring its area into view, then keep the spotlight on it.
+  // While the tour is open the visitor cannot scroll the page: the tour moves it. Scrolling by hand
+  // pulled the lit area out from under the card. The page itself still responds to clicks.
   useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const before = { html: html.style.overflow, body: body.style.overflow, pad: body.style.paddingRight }
+    // Hiding the scrollbar would widen the page and shift everything; keep its width as padding.
+    const bar = window.innerWidth - html.clientWidth
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    if (bar > 0) body.style.paddingRight = `${bar}px`
+    return () => {
+      html.style.overflow = before.html
+      body.style.overflow = before.body
+      body.style.paddingRight = before.pad
+    }
+  }, [])
+
+  // Each step, in order: set the scene, wait for the page to settle, jump to the area (no smooth
+  // scroll to chase), measure, and only then fade the spotlight, arrow and card in together.
+  useEffect(() => {
+    setShown(false)
     step.setup(actions)
     let raf = 0
     let alive = true
@@ -222,20 +244,25 @@ export default function Tour({
       setCardH(h)
       setLayout(place(rect, h))
     }
-    const scrollTo = window.setTimeout(() => {
-      findTarget(step)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center', inline: 'nearest' })
+    // The page can keep shifting for a moment after the jump (data arriving, sections resizing).
+    const follow = () => {
       measure()
-    }, 120)
-    // Layout keeps shifting for a moment (data loads, sections resize), and the visitor may scroll.
-    const tick = () => {
-      measure()
-      raf = requestAnimationFrame(tick)
+      raf = requestAnimationFrame(follow)
     }
-    raf = requestAnimationFrame(tick)
-    next.current?.focus({ preventScroll: true })
+    const settle = window.setTimeout(() => {
+      if (!alive) return
+      findTarget(step)?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' })
+      measure()
+      raf = requestAnimationFrame(() => {
+        if (!alive) return
+        setShown(true)
+        next.current?.focus({ preventScroll: true })
+        follow()
+      })
+    }, 180)
     return () => {
       alive = false
-      window.clearTimeout(scrollTo)
+      window.clearTimeout(settle)
       cancelAnimationFrame(raf)
     }
   }, [i]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -258,6 +285,9 @@ export default function Tour({
     return () => window.removeEventListener('keydown', onKey)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const visible = shown && layout !== null
+  const fade = visible ? 1 : 0
+  const fadeTransition = reduced ? 'none' : 'opacity 220ms var(--ease-smooth)'
   const r = layout?.target ?? null
   const arrow = layout ? arrowPath(layout, cardH, cardW) : null
   const spot = r
@@ -271,14 +301,18 @@ export default function Tour({
         <div
           aria-hidden
           className="pointer-events-none fixed z-40 rounded-xl"
-          style={{ ...spot, boxShadow: '0 0 0 2px var(--color-earth), 0 0 0 200vmax rgba(0, 0, 0, 0.68)' }}
+          style={{
+            ...spot,
+            boxShadow: `0 0 0 2px rgba(88, 166, 232, ${fade}), 0 0 0 200vmax rgba(0, 0, 0, 0.68)`,
+            transition: reduced ? 'none' : 'box-shadow 220ms var(--ease-smooth)',
+          }}
         />
       ) : (
         <div aria-hidden className="pointer-events-none fixed inset-0 z-40 bg-black/60" />
       )}
 
       {arrow && (
-        <svg aria-hidden className="pointer-events-none fixed inset-0 z-50 h-full w-full">
+        <svg aria-hidden className="pointer-events-none fixed inset-0 z-50 h-full w-full" style={{ opacity: fade, transition: fadeTransition }}>
           <path d={arrow.d} fill="none" stroke="#000" strokeWidth="6" strokeLinecap="round" opacity="0.55" />
           <path d={arrow.d} fill="none" stroke="var(--color-earth)" strokeWidth="2.5" strokeLinecap="round" />
           <g transform={`translate(${arrow.tip[0]} ${arrow.tip[1]}) rotate(${arrow.angle})`}>
@@ -297,8 +331,9 @@ export default function Tour({
           width: cardW,
           left: layout?.card.left ?? 16,
           top: layout?.card.top ?? 16,
-          visibility: layout ? 'visible' : 'hidden',
-          transition: reduced ? 'none' : 'left 320ms var(--ease-smooth), top 320ms var(--ease-smooth)',
+          opacity: fade,
+          pointerEvents: visible ? 'auto' : 'none',
+          transition: fadeTransition,
         }}
       >
         <div className="flex items-center justify-between gap-3">

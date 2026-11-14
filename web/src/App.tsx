@@ -5,6 +5,7 @@ import type { Mission } from './lib/scoring'
 import { buildUrl, readUrlState } from './lib/urlState'
 import BestDates from './views/BestDates'
 import Compare, { type Scenario } from './views/Compare'
+import MoonLoader from './views/MoonLoader'
 import Panorama from './views/Panorama'
 import Readouts from './views/Readouts'
 import Recommend, { type RankView } from './views/Recommend'
@@ -151,7 +152,11 @@ export default function App() {
     )
   }
   if (!now || !windowData) {
-    return <main className="grid h-full place-items-center text-sm text-muted">Loading the Moon…</main>
+    return (
+      <main className="grid h-full place-items-center">
+        <MoonLoader label="Loading the Moon and its ephemeris…" size={72} />
+      </main>
+    )
   }
 
   const range = getEphemeris().range
@@ -312,7 +317,13 @@ export default function App() {
           aria-label="Moon"
           data-tour="moon"
         >
-          <Suspense fallback={<div className="grid h-full place-items-center text-sm text-muted">Loading the 3D Moon…</div>}>
+          <Suspense
+            fallback={
+              <div className="grid h-full place-items-center">
+                <MoonLoader label="Loading the 3D Moon…" />
+              </div>
+            }
+          >
             <Globe sites={sites} site={site} now={now} view={globeView} onSelect={setSiteId} onPick={pickPoint} />
           </Suspense>
           <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-4">

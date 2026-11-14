@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { gridHorizon, loadPolarGrid, scoreGrid, type HorizonProfile, type PolarGrid, type Site } from '../core'
 import { HOUR, latLon } from '../lib/format'
 import { useSize } from '../lib/useSize'
+import MoonLoader from './MoonLoader'
 
 /**
  * The whole south polar region scored cell by cell for the chosen date, using each cell's own terrain
@@ -202,9 +203,13 @@ export default function PolarMap({ sites, t, days, weights, current, onPick }: P
     return (
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,560px)_1fr]">
         <div ref={wrapRef}>
-          <p className={`text-sm ${error ? 'text-warn' : 'text-muted'}`}>
-            {error ? `${error}. Reload the page to try again.` : 'Loading the south-pole terrain grid…'}
-          </p>
+          {error ? (
+            <p className="text-sm text-warn">{error}. Reload the page to try again.</p>
+          ) : (
+            <div className="grid h-60 place-items-center">
+              <MoonLoader label="Loading the south-pole terrain grid…" />
+            </div>
+          )}
         </div>
       </div>
     )

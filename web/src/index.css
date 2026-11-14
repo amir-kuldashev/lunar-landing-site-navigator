@@ -166,3 +166,22 @@ body {
   cursor: default;
   transform: none;
 }
+
+/* Moon loading indicator: the shadow crosses the disc, full Moon to new Moon and back. */
+@keyframes moon-phase {
+  from {
+    transform: translateX(-64px);
+  }
+  to {
+    transform: translateX(64px);
+  }
+}
+.moon-loader-shadow {
+  animation: moon-phase 2.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .moon-loader-shadow {
+    animation: none;
+    transform: translateX(26px);
+  }
+}
