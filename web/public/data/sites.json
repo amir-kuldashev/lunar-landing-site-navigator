@@ -1,0 +1,7 @@
+[
+  { "id": "apollo-11", "name": "Apollo 11 (Tranquility Base)", "lat": 0.674, "lon": 23.473, "alt_m": 0, "category": "Apollo", "mission": "Apollo 11", "source_url": "", "verified": false },
+  { "id": "change-4", "name": "Chang'e 4 (Von Kármán)", "lat": -45.444, "lon": 177.599, "alt_m": 0, "category": "International", "mission": "Chang'e 4", "source_url": "", "verified": false },
+  { "id": "chandrayaan-3", "name": "Chandrayaan-3 (Shiv Shakti)", "lat": -69.373, "lon": 32.319, "alt_m": 0, "category": "International", "mission": "Chandrayaan-3", "source_url": "", "verified": false },
+  { "id": "im-1", "name": "IM-1 Odysseus (Malapert A)", "lat": -80.13, "lon": 1.44, "alt_m": 0, "category": "CLPS", "mission": "IM-1", "source_url": "", "verified": false },
+  { "id": "shackleton-ridge", "name": "Shackleton connecting ridge", "lat": -89.45, "lon": 222.69, "alt_m": 0, "category": "South pole candidate", "mission": "", "source_url": "", "verified": false }
+]
