@@ -4,6 +4,8 @@ NASA Space Apps Challenge 2026 — "Lunar Landing Site Navigator".
 
 A web app for comparing lunar landing sites and dates quickly. Pick a site and a date, and see where the Sun and Earth sit relative to the local horizon, how long until sunset and Earthset, and what that means for solar power and direct-to-Earth communication.
 
+**Live site:** https://amir-kuldashev.github.io/lunar-landing-site-navigator/
+
 ## Start here
 
 - **Plan, team briefs, timeline:** [docs/PLAN.md](docs/PLAN.md). Find your card under "Team briefs".

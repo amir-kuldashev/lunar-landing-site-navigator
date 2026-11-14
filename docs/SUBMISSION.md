@@ -32,8 +32,8 @@ AI-assisted, so add that acknowledgment line. Draft disclosure is below.
 
 | Item | Link | Ready? |
 |---|---|---|
-| Live demo | not deployed yet | ☐ |
-| Code | https://github.com/amir-kuldashev/lunar-landing-site-navigator (must be made public) | ☐ |
+| Live demo | https://amir-kuldashev.github.io/lunar-landing-site-navigator/ | ✅ deployed 14 Nov, redeploys on every push to `main` |
+| Code | https://github.com/amir-kuldashev/lunar-landing-site-navigator | ✅ public |
 | Demo video or slides | not made yet | ☐ |
 
 ## Project description (draft)
@@ -106,7 +106,7 @@ No AI-generated images, audio or video of people were used.
 - [ ] Team decision on the AI rule recorded
 - [x] Site list verified: 18 of 20 rows confirmed against their cited sources and set to `verified: true` on 14 Nov 2026; 2 rows (shackleton-ridge, change-7) left `verified: false` with a reason. Full log in `docs/QA.md`.
 - [ ] Live demo link opens in a private window with no login
-- [ ] Repo is public
+- [x] Repo is public
 - [ ] Demo video or slides hosted publicly
 - [ ] Every teammate added to the team on the Space Apps site
 - [ ] Submitted with at least two hours to spare
