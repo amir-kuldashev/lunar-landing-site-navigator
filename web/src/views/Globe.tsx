@@ -180,7 +180,10 @@ function SiteGeometry({ site, now }: { site: Site; now: Topo }) {
   )
 }
 
-/** A soft glowing disc for the Sun, drawn once on a canvas. */
+/** Share of the Sun sprite's half-width taken by the solid disc; the rest is glow. */
+const SUN_DISC = 0.45
+
+/** A glowing disc for the Sun, drawn once on a canvas. */
 function useSunTexture() {
   return useMemo(() => {
     const size = 256
@@ -189,9 +192,9 @@ function useSunTexture() {
     const ctx = canvas.getContext('2d')!
     const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
     g.addColorStop(0, 'rgba(255,255,255,1)')
-    g.addColorStop(0.1, 'rgba(255,248,225,1)')
-    g.addColorStop(0.16, 'rgba(255,226,150,0.85)')
-    g.addColorStop(0.35, 'rgba(244,197,90,0.28)')
+    g.addColorStop(0.36, 'rgba(255,250,232,1)')
+    g.addColorStop(SUN_DISC, 'rgba(255,228,150,0.95)')
+    g.addColorStop(0.56, 'rgba(244,197,90,0.3)')
     g.addColorStop(1, 'rgba(244,197,90,0)')
     ctx.fillStyle = g
     ctx.fillRect(0, 0, size, size)
@@ -199,6 +202,24 @@ function useSunTexture() {
     tex.colorSpace = THREE.SRGBColorSpace
     return tex
   }, [])
+}
+
+/** A short word as a texture, for labels that live in the 3D scene. */
+function useTextTexture(text: string, color: string) {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 384
+    canvas.height = 128
+    const ctx = canvas.getContext('2d')!
+    ctx.font = '600 76px Archivo, system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = color
+    ctx.fillText(text, 192, 68)
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }, [text, color])
 }
 
 function useEarthTexture() {
@@ -217,22 +238,35 @@ function useEarthTexture() {
   return map
 }
 
-// Schematic distance for the Sun marker, so it can share a frame with Earth. Its direction is true.
-const SUN_DISTANCE = 7
+/*
+  Sizes in the scene, in lunar radii (the Moon is 1).
+  Earth is drawn in true proportion to the Moon: 3.67 times wider.
+  The Sun cannot be: it is 109 times wider than Earth and 390 times farther away than Earth is.
+  It is drawn larger than Earth so the order of sizes is right, and far closer than it really is.
+  Directions from the Moon are true for both.
+*/
+const EARTH_RADIUS = 3.67
+const EARTH_DISTANCE = 13
+const SUN_RADIUS = 6.5
+const SUN_DISTANCE = 26
+const SYSTEM_VIEW_DISTANCE = 100
 const EARTH_TILT = (23.4 * Math.PI) / 180
 const EARTH_TURN_MS = 24.84 * 3600000 // one turn as seen from the Moon
 
 /**
  * The Sun and Earth, each in its true direction from the Moon for the chosen time.
- * Directions and Earth's lit phase are real; sizes and distances are not to scale, and Earth's
- * spin is only approximate (the right rate, not the exact face).
+ * Directions and Earth's lit phase are real. Earth is in true proportion to the Moon; the Sun's size and
+ * both distances are compressed (see the constants above). Earth's spin is approximate: the right rate,
+ * not the exact face.
  */
 function Sky({ t }: { t: number }) {
   const { sun, earth } = getEphemeris().sunEarth(t)
   const sunDir = unit(sun)
   const sunPos = sunDir.clone().multiplyScalar(60)
-  const earthPos = unit(earth).multiplyScalar(6)
+  const earthPos = unit(earth).multiplyScalar(EARTH_DISTANCE)
   const sunTex = useSunTexture()
+  const sunLabel = useTextTexture('Sun', '#f4c55a')
+  const earthLabel = useTextTexture('Earth', '#58a6e8')
   const earthTex = useEarthTexture()
   const spin = ((t % EARTH_TURN_MS) / EARTH_TURN_MS) * Math.PI * 2
   return (
@@ -241,18 +275,19 @@ function Sky({ t }: { t: number }) {
       <directionalLight position={sunPos} intensity={3.4} color="#fff6e6" />
 
       <group position={sunDir.clone().multiplyScalar(SUN_DISTANCE)}>
-        <sprite scale={[4, 4, 1]}>
+        <sprite scale={[(2 * SUN_RADIUS) / SUN_DISC, (2 * SUN_RADIUS) / SUN_DISC, 1]}>
           <spriteMaterial map={sunTex} blending={THREE.AdditiveBlending} depthWrite={false} transparent toneMapped={false} />
         </sprite>
-        <Html center style={{ pointerEvents: 'none' }} zIndexRange={[5, 0]}>
-          <span className="block translate-y-10 whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-sun">Sun</span>
-        </Html>
+        {/* Name tag drawn in the scene, anchored just under the disc. */}
+        <sprite scale={[9, 3, 1]} center={[0.5, 0.5 + (SUN_RADIUS + 3.2) / 3]}>
+          <spriteMaterial map={sunLabel} depthWrite={false} transparent toneMapped={false} />
+        </sprite>
       </group>
 
       <group position={earthPos}>
         <group rotation={[EARTH_TILT, 0, 0]}>
           <mesh rotation={[0, spin, 0]}>
-            <sphereGeometry args={[0.6, 64, 32]} />
+            <sphereGeometry args={[EARTH_RADIUS, 96, 48]} />
             <meshStandardMaterial
               key={earthTex ? 'tex' : 'plain'}
               map={earthTex}
@@ -266,12 +301,12 @@ function Sky({ t }: { t: number }) {
         </group>
         {/* Thin blue rim for the atmosphere. */}
         <mesh>
-          <sphereGeometry args={[0.64, 48, 24]} />
+          <sphereGeometry args={[EARTH_RADIUS * 1.045, 64, 32]} />
           <meshBasicMaterial color="#6cb6ff" transparent opacity={0.16} side={THREE.BackSide} depthWrite={false} />
         </mesh>
-        <Html center style={{ pointerEvents: 'none' }} zIndexRange={[5, 0]}>
-          <span className="block translate-y-10 whitespace-nowrap text-xs font-medium text-earth">Earth</span>
-        </Html>
+        <sprite scale={[9, 3, 1]} center={[0.5, 0.5 + (EARTH_RADIUS + 2.4) / 3]}>
+          <spriteMaterial map={earthLabel} depthWrite={false} transparent toneMapped={false} />
+        </sprite>
       </group>
     </>
   )
@@ -295,7 +330,7 @@ function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view
       normal.normalize()
       if (normal.dot(dir) < 0) normal.negate()
       dir = normal
-      dist = 23
+      dist = SYSTEM_VIEW_DISTANCE
     } else {
       // Sit a little off the vertical so the horizon disc and pointers read in perspective.
       const side = new THREE.Vector3(0, 1, 0).cross(dir)
@@ -332,7 +367,7 @@ function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view
       dampingFactor={0.08}
       rotateSpeed={0.5}
       minDistance={1.35}
-      maxDistance={44}
+      maxDistance={115}
       onStart={() => {
         flight.current = null
       }}
@@ -362,6 +397,12 @@ export default function Globe({ sites, site, now, view, onSelect, onPick }: Glob
       role="img"
     >
       <color attach="background" args={['#000000']} />
+      {/*
+        Workaround: with this React and drei pairing, the first <Html> mounted in the scene renders an
+        empty container (seen in the page's DOM), so whichever label came first went missing. An empty
+        one goes first to take that slot. Remove once the libraries are updated and labels survive without it.
+      */}
+      <Html style={{ display: 'none' }} />
       <Stars radius={120} depth={40} count={2600} factor={3.2} saturation={0} fade speed={0} />
       <Sky t={now.t} />
       <Moon onPick={onPick} />
