@@ -32,6 +32,7 @@ docs/       plan, slides, demo script
 ## Data sources
 
 Full list of all data, references and open-source dependencies with licences: [docs/RESOURCES.md](docs/RESOURCES.md).
+Person C's own reference list and AI disclosure for the views work: [docs/REFERENCES_ANTIGRAVITY_PRO.md](docs/REFERENCES_ANTIGRAVITY_PRO.md).
 
 - JPL Horizons (validation of Sun/Earth positions): https://ssd.jpl.nasa.gov/horizons/
 - NAIF SPICE generic kernels (ephemeris): https://naif.jpl.nasa.gov/pub/naif/generic_kernels/

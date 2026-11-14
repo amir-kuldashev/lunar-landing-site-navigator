@@ -22,7 +22,9 @@ uses several.
 | LOLA GDR polar 80 m/px `LDEM_80S_80M` | LRO laser altimeter DEM | Terrain skylines south of 80S | https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDEM_80S_80M.IMG |
 | LOLA GDR polar 240 m/px `LDEM_75S_240M` | LRO laser altimeter DEM | Terrain skylines 75-80S | https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDEM_75S_240M.IMG |
 | LOLA GDR global 16 px/deg `LDEM_16` | LRO laser altimeter DEM | Terrain skylines elsewhere | https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/LDEM_16.IMG |
+| LOLA GDR global 128 px/deg `LDEM_128` | LRO laser altimeter DEM (about 237 m) | 3D landscape blocks for sites away from the pole | https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/LDEM_128.IMG |
 | NASA SVS CGI Moon Kit | Moon colour + displacement textures | 3D Moon globe | https://svs.gsfc.nasa.gov/4720 |
+| NASA SVS Blue Marble Earth map (visualization 3615) | Earth colour map | Earth in the 3D scene | https://svs.gsfc.nasa.gov/3615 |
 | NSSDC Lunar Landing Site coordinates | Apollo landing coordinates | Apollo 11-17 site coordinates | https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html |
 | LROC Quickmap | LRO map/coordinate tool | Coordinate and elevation checks | https://quickmap.lroc.im-ldi.com/ |
 | NASA Moon Trek | 3D Moon reference | Visual site checks | https://trek.nasa.gov/moon/ |
