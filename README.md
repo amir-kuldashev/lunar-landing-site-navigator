@@ -31,6 +31,7 @@ docs/       plan, slides, demo script
 
 ## Data sources
 
+- [Detailed References & Used Resources List (Person C / Antigravity Pro)](docs/REFERENCES_ANTIGRAVITY_PRO.md)
 - JPL Horizons (validation of Sun/Earth positions): https://ssd.jpl.nasa.gov/horizons/
 - NAIF SPICE generic kernels (ephemeris): https://naif.jpl.nasa.gov/pub/naif/generic_kernels/
 - LOLA south pole DEMs, NASA GSFC PGDA (terrain horizons): https://pgda.gsfc.nasa.gov/

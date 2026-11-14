@@ -101,8 +101,11 @@ AI coding assistants were used throughout this project:
 - **Claude Code (Anthropic):** drafted the development plan and task split from the challenge text, wrote
   most of the core astronomy module, the tests, the 3D Moon view and page layout, reviewed and merged teammates'
   pull requests, and drafted this document.
-- **Other assistants used by teammates** (each person fills in what they used and for what): ChatGPT,
-  Google Antigravity, Claude.
+- **Google Antigravity (Antigravity Pro / Gemini):** architected and implemented the core main views
+  (`views/Panorama.tsx`, `views/Timeline.tsx`, `views/Metrics.tsx`, `views/ScheduleSlip.tsx`, `views/intervals.ts`),
+  including the true-angular-scale horizon panorama, 30-day three-tier timeline ribbon, interactive schedule-slip
+  scenario comparison engine, and corresponding unit tests. Full details in `docs/REFERENCES_ANTIGRAVITY_PRO.md`.
+- **Other assistants used by teammates:** ChatGPT, Claude.
 
 All numerical results were checked against JPL Horizons by an automated test, not accepted on the AI's word.
 No AI-generated images, audio or video of people were used.
