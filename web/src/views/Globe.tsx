@@ -5,7 +5,8 @@ import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { getEphemeris, siteVector, type Site, type Topo, type Vec3 } from '../core'
 import { useReducedMotion } from '../lib/motion'
-import { Sky, SYSTEM_VIEW_DISTANCE } from './SkyBodies'
+import { Sky } from './SkyBodies'
+import { SYSTEM_VIEW_DISTANCE } from './skyScale'
 
 /**
  * 3D Moon lit by the real Sun direction for the selected time, so the day/night line is true.
@@ -236,7 +237,7 @@ function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view
       dampingFactor={0.08}
       rotateSpeed={0.5}
       minDistance={1.35}
-      maxDistance={80}
+      maxDistance={90}
       onStart={() => {
         flight.current = null
       }}

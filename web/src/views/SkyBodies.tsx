@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { getEphemeris, type Vec3 } from '../core'
 import { useReducedMotion } from '../lib/motion'
+import { EARTH_DISTANCE, EARTH_RADIUS, SUN_DISTANCE, SUN_RADIUS } from './skyScale'
 
 /**
  * The Sun and Earth as seen from around the Moon, each in its true direction for the chosen time.
@@ -12,15 +13,8 @@ import { useReducedMotion } from '../lib/motion'
  * Earth is really 3.7 times the Moon's width and the Sun 109 times Earth's, and both are far more
  * distant than drawn. Earth's spin runs at the right rate but does not show the exact face.
  *
- * Scene units are lunar radii; the Moon is 1.
+ * Sizes and distances live in skyScale.ts, which also guarantees the bodies never touch.
  */
-export const EARTH_RADIUS = 2.4
-export const EARTH_DISTANCE = 8
-export const SUN_RADIUS = 3.8
-export const SUN_DISTANCE = 12.5
-/** Camera distance that frames the Moon, Earth and Sun together. */
-export const SYSTEM_VIEW_DISTANCE = 58
-
 const EARTH_TILT = (23.4 * Math.PI) / 180
 const EARTH_TURN_MS = 24.84 * 3600000 // one turn as seen from the Moon
 
