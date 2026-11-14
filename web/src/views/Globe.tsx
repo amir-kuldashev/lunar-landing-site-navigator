@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { getEphemeris, siteVector, type Site, type Topo, type Vec3 } from '../core'
+import { MOON_CURSOR } from '../lib/cursors'
 import { useReducedMotion } from '../lib/motion'
 import { Sky } from './SkyBodies'
 import { SYSTEM_VIEW_DISTANCE } from './skyScale'
@@ -82,12 +83,14 @@ function SitePin({
 }) {
   const [hover, setHover] = useState(false)
   const pos = useMemo(() => unit(siteVector(site.lat, site.lon, 0)).multiplyScalar(1.004), [site.lat, site.lon])
+  const gl = useThree((s) => s.gl)
   useEffect(() => {
-    document.body.style.cursor = hover ? 'pointer' : ''
+    if (!hover) return
+    gl.domElement.style.cursor = MOON_CURSOR.lock
     return () => {
-      document.body.style.cursor = ''
+      gl.domElement.style.cursor = MOON_CURSOR.idle
     }
-  }, [hover])
+  }, [hover, gl])
   return (
     <group position={pos}>
       <mesh
@@ -184,7 +187,7 @@ function SiteGeometry({ site, now }: { site: Site; now: Topo }) {
 
 /** Flies the camera to look down on the selected site; a drag by the visitor cancels the flight. */
 function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view: GlobeView; t: number }) {
-  const { camera } = useThree()
+  const { camera, gl } = useThree()
   const controls = useRef<OrbitControlsImpl>(null)
   const reduced = useReducedMotion()
   const flight = useRef<{ dir: THREE.Vector3; dist: number } | null>(null)
@@ -240,6 +243,10 @@ function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view
       maxDistance={90}
       onStart={() => {
         flight.current = null
+        gl.domElement.style.cursor = MOON_CURSOR.drag
+      }}
+      onEnd={() => {
+        gl.domElement.style.cursor = MOON_CURSOR.idle
       }}
     />
   )
@@ -263,6 +270,9 @@ export default function Globe({ sites, site, now, view, onSelect, onPick }: Glob
       camera={{ position: [0, 0.6, 7.5], fov: 34, near: 0.05, far: 400 }}
       dpr={[1, 2]}
       gl={{ antialias: true }}
+      onCreated={({ gl }) => {
+        gl.domElement.style.cursor = MOON_CURSOR.idle
+      }}
       aria-label={`3D view of the Moon showing ${site.name}, lit by the Sun as it is at the selected time`}
       role="img"
     >

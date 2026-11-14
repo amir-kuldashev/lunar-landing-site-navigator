@@ -113,7 +113,7 @@ export default function Readouts({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="rounded-xl border border-line bg-panel p-4 text-sm leading-relaxed" role="status">
+      <p data-tour="verdict" className="rounded-xl border border-line bg-panel p-4 text-sm leading-relaxed" role="status">
         {sunLine} {earthLine}
       </p>
       <Body

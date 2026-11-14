@@ -166,9 +166,3 @@ body {
   cursor: default;
   transform: none;
 }
-
-/* The page section a tour step is talking about. */
-.tour-focus {
-  outline: 2px solid var(--color-earth);
-  outline-offset: 4px;
-}

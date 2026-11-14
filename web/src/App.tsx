@@ -44,8 +44,9 @@ export default function App() {
   const [rankView, setRankView] = useState<RankView>(() =>
     new URLSearchParams(window.location.search).get('rank') === 'map' ? 'map' : 'list',
   )
-  // ?tour=1 starts the guided tour straight away, for links aimed at first-time visitors.
-  const [touring, setTouring] = useState(() => new URLSearchParams(window.location.search).get('tour') === '1')
+  // ?tour=1 starts the guided tour straight away, for links aimed at first-time visitors (?tour=3 opens on step 3).
+  const [tourStart] = useState(() => Number(new URLSearchParams(window.location.search).get('tour')) || 0)
+  const [touring, setTouring] = useState(tourStart > 0)
   const [globeView, setGlobeView] = useState<GlobeView>(() =>
     new URLSearchParams(window.location.search).get('view') === 'system' ? 'system' : 'site',
   )
@@ -272,7 +273,7 @@ export default function App() {
           <button className="btn btn-primary min-w-24" onClick={() => setPlaying((p) => !p)} aria-pressed={playing}>
             {playing ? 'Pause' : 'Start'}
           </button>
-          <button className="btn" onClick={pin}>
+          <button data-tour="pin" className="btn" onClick={pin}>
             Pin this scenario
           </button>
           <button
@@ -309,6 +310,7 @@ export default function App() {
         <section
           className="enter-fade relative h-[46vh] min-h-[320px] overflow-hidden rounded-xl border border-line lg:h-auto lg:min-h-[440px]"
           aria-label="Moon"
+          data-tour="moon"
         >
           <Suspense fallback={<div className="grid h-full place-items-center text-sm text-muted">Loading the 3D Moon…</div>}>
             <Globe sites={sites} site={site} now={now} view={globeView} onSelect={setSiteId} onPick={pickPoint} />
@@ -361,7 +363,7 @@ export default function App() {
           </p>
         </section>
 
-        <div className="enter" style={{ animationDelay: '120ms' }}>
+        <div data-tour="readouts" className="enter" style={{ animationDelay: '120ms' }}>
           <Readouts
             now={now}
             events={windowData.ev}
@@ -412,7 +414,7 @@ export default function App() {
             </button>
           </div>
         </div>
-        <div className="mt-3 h-[220px]">
+        <div data-tour="sky" className="mt-3 h-[220px]">
           <Panorama site={site} now={now} windowStart={windowStart} days={WINDOW_DAYS} />
         </div>
         <div className="mt-4 border-t border-line pt-4">
@@ -452,7 +454,7 @@ export default function App() {
         />
       </section>
 
-      <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '240ms' }}>
+      <section id="sec-slip" data-tour="slip" className="enter scroll-mt-24 rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '240ms' }}>
         <h2 className="mb-3 text-sm font-medium">If the landing date slips</h2>
         <ScheduleSlip
           key={`${site.id}:${site.lat}:${site.lon}`}
@@ -476,7 +478,7 @@ export default function App() {
         />
       </section>
 
-      {touring && <Tour actions={tourActions} onClose={() => setTouring(false)} />}
+      {touring && <Tour actions={tourActions} startAt={tourStart - 1} onClose={() => setTouring(false)} />}
 
       <footer className="max-w-4xl text-xs leading-relaxed text-muted">
         This tool assesses sunlight and direct Earth contact. It does not assess whether the ground is safe to

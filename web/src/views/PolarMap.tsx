@@ -217,6 +217,7 @@ export default function PolarMap({ sites, t, days, weights, current, onPick }: P
     <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,560px)_1fr]">
       <div ref={wrapRef}>
         <canvas
+          data-tour="polar-map"
           ref={canvasRef}
           style={{ width: size, height: size }}
           className="cursor-crosshair rounded-lg"
