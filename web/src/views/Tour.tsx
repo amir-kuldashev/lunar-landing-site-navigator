@@ -21,6 +21,8 @@ export interface TourActions {
 interface Step {
   /** CSS selectors for the part of the page this step is about; the first one found is used. */
   target: string[]
+  /** Pixels to trim from the target's edges, so the light falls on exactly the thing being described. */
+  inset?: { top?: number; right?: number; bottom?: number; left?: number }
   title: string
   body: string
   setup: (a: TourActions) => void
@@ -44,8 +46,10 @@ const STEPS: Step[] = [
   },
   {
     target: [at('moon')],
+    // Leave the panel's title row and view buttons out: this step is about the Moon itself.
+    inset: { top: 114 },
     title: 'The Moon as it is lit right now',
-    body: 'The bright side faces the real Sun for the chosen moment. The white ring is the lander\'s horizon; the yellow pointer aims at the Sun and the blue one at Earth. The card in the corner describes the ground here; "Landscape" shows it in 3D, and "Sun, Moon and Earth" steps back.',
+    body: 'The bright side faces the real Sun for the chosen moment. The white ring is the lander\'s horizon; the yellow pointer aims at the Sun and the blue one at Earth. You can drag the Moon to turn it.',
     setup: (a) => {
       a.setPlaying(false)
       a.setGlobeView('site')
@@ -64,7 +68,7 @@ const STEPS: Step[] = [
     },
   },
   {
-    target: [at('readouts')],
+    target: [at('sun-earth')],
     title: 'A short move changes everything',
     body: 'Same date, but now the floor of Malapert crater, a few degrees away. Its walls rise up to 22 degrees all around, so neither the Sun nor Earth ever clears them. No power and no contact, all year. Terrain decides the answer.',
     setup: (a) => {
@@ -74,7 +78,7 @@ const STEPS: Step[] = [
     },
   },
   {
-    target: [at('polar-map'), '#sec-rank'],
+    target: [at('polar-map')],
     title: 'So where is it good to land?',
     body: 'This map scores every 4 km of the south polar region for the chosen date, using the real terrain around each cell. Bright is good; dark grey is too steep. The numbered spots are the best areas. Try it: click any cell to open that point.',
     setup: (a) => {
@@ -115,6 +119,18 @@ interface Layout {
   target: DOMRect | null
   card: { left: number; top: number }
   side: Side
+}
+
+/** The rectangle a step lights up: its target element, trimmed by the step's inset. */
+function targetRect(step: Step): DOMRect | null {
+  const el = findTarget(step)
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  const i = step.inset
+  if (!i) return r
+  const left = r.left + (i.left ?? 0)
+  const top = r.top + (i.top ?? 0)
+  return new DOMRect(left, top, Math.max(40, r.right - (i.right ?? 0) - left), Math.max(40, r.bottom - (i.bottom ?? 0) - top))
 }
 
 function findTarget(step: Step): HTMLElement | null {
@@ -214,6 +230,9 @@ export default function Tour({
   // Blocking the default action does not stop the events themselves, so the 3D Moon can still be
   // turned and zoomed, and the page still responds to clicks.
   useEffect(() => {
+    // While touring, the overlays on the 3D panel (the ground card and the hint) are hidden, so the
+    // step about the Moon shows the Moon and nothing else. See .touring in index.css.
+    document.body.classList.add('touring')
     const stop = (e: Event) => e.preventDefault()
     const keys = new Set([' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown'])
     const stopKeys = (e: KeyboardEvent) => {
@@ -226,6 +245,7 @@ export default function Tour({
     window.addEventListener('touchmove', stop, { passive: false })
     window.addEventListener('keydown', stopKeys)
     return () => {
+      document.body.classList.remove('touring')
       window.removeEventListener('wheel', stop)
       window.removeEventListener('touchmove', stop)
       window.removeEventListener('keydown', stopKeys)
@@ -243,7 +263,7 @@ export default function Tour({
     let lastKey = ''
     const measure = () => {
       if (!alive) return
-      const rect = findTarget(step)?.getBoundingClientRect() ?? null
+      const rect = targetRect(step)
       const h = card.current?.offsetHeight ?? 240
       // Only re-render when something actually moved.
       const key = rect
@@ -268,9 +288,8 @@ export default function Tour({
     }
     /** Scroll position that puts the step's area in the middle of the window. */
     const destination = () => {
-      const el = findTarget(step)
-      if (!el) return window.scrollY
-      const r = el.getBoundingClientRect()
+      const r = targetRect(step)
+      if (!r) return window.scrollY
       const max = document.documentElement.scrollHeight - window.innerHeight
       return Math.max(0, Math.min(window.scrollY + r.top + r.height / 2 - window.innerHeight / 2, max))
     }

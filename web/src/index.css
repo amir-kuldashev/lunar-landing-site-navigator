@@ -257,3 +257,8 @@ body {
     transform: none;
   }
 }
+
+/* While the guided tour is open, overlays that would clutter a lit area are hidden (they keep their space). */
+.touring .tour-hide {
+  visibility: hidden;
+}

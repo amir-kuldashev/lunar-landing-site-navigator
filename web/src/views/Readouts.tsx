@@ -116,32 +116,34 @@ export default function Readouts({
       <p data-tour="verdict" className="rounded-xl border border-line bg-panel p-4 text-sm leading-relaxed" role="status">
         {sunLine} {earthLine}
       </p>
-      <Body
-        name="Sun"
-        color="var(--color-sun)"
-        el={now.sun.el}
-        az={now.sun.az}
-        status={lit >= 0.995 ? 'Full sunlight' : lit > 0 ? `Partly hidden, ${(lit * 100).toFixed(0)}% of disk` : 'Night'}
-        good={lit > 0}
-        countdownLabel={sun.on ? 'until sunset' : 'until sunrise'}
-        countdown={sun.at ? duration(sun.at - now.t) : beyond}
-        extra={`Flat panel facing up gets ${(Math.max(0, Math.sin((now.sun.el * Math.PI) / 180)) * lit * 100).toFixed(0)}% of full power. A panel tracking the Sun gets ${(lit * 100).toFixed(0)}%.`}
-      />
-      <Body
-        name="Earth"
-        color="var(--color-earth)"
-        el={now.earth.el}
-        az={now.earth.az}
-        status={now.earth.visible ? 'Direct link available' : 'No direct link'}
-        good={now.earth.visible}
-        countdownLabel={earth.on ? 'until Earthset' : 'until Earthrise'}
-        countdown={earth.at ? duration(earth.at - now.t) : beyond}
-        extra={
-          now.earth.visible
-            ? `Earth sits ${deg(now.earth.el - now.earth.horizonEl, 1)} above the skyline in that direction.`
-            : `Earth is ${deg(now.earth.horizonEl - now.earth.el, 1)} below the skyline. A relay satellite is needed.`
-        }
-      />
+      <div data-tour="sun-earth" className="flex flex-col gap-3">
+        <Body
+          name="Sun"
+          color="var(--color-sun)"
+          el={now.sun.el}
+          az={now.sun.az}
+          status={lit >= 0.995 ? 'Full sunlight' : lit > 0 ? `Partly hidden, ${(lit * 100).toFixed(0)}% of disk` : 'Night'}
+          good={lit > 0}
+          countdownLabel={sun.on ? 'until sunset' : 'until sunrise'}
+          countdown={sun.at ? duration(sun.at - now.t) : beyond}
+          extra={`Flat panel facing up gets ${(Math.max(0, Math.sin((now.sun.el * Math.PI) / 180)) * lit * 100).toFixed(0)}% of full power. A panel tracking the Sun gets ${(lit * 100).toFixed(0)}%.`}
+        />
+        <Body
+          name="Earth"
+          color="var(--color-earth)"
+          el={now.earth.el}
+          az={now.earth.az}
+          status={now.earth.visible ? 'Direct link available' : 'No direct link'}
+          good={now.earth.visible}
+          countdownLabel={earth.on ? 'until Earthset' : 'until Earthrise'}
+          countdown={earth.at ? duration(earth.at - now.t) : beyond}
+          extra={
+            now.earth.visible
+              ? `Earth sits ${deg(now.earth.el - now.earth.horizonEl, 1)} above the skyline in that direction.`
+              : `Earth is ${deg(now.earth.horizonEl - now.earth.el, 1)} below the skyline. A relay satellite is needed.`
+          }
+        />
+      </div>
       <section className="rounded-xl border border-line bg-panel p-4" aria-label={`${days}-day outlook`}>
         <h2 className="text-sm font-medium">{days}-day outlook from the window start</h2>
         <div className="mt-3 grid grid-cols-3 gap-4">

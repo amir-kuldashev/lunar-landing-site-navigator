@@ -388,7 +388,7 @@ export default function App() {
               </div>
             </div>
           </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-3 p-4">
+          <div className="tour-hide pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-3 p-4">
             <div className="flex flex-wrap items-end justify-between gap-3">
               {view3d === 'terrain' && terrainRange ? (
                 <div className="pointer-events-auto rounded-lg border border-line bg-black/70 p-3 text-xs backdrop-blur-sm">

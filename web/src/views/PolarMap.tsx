@@ -262,7 +262,7 @@ export default function PolarMap({ sites, t, days, weights, current, onPick }: P
           {error ? (
             <p className="text-sm text-warn">{error}. Reload the page to try again.</p>
           ) : (
-            <div className="grid h-60 place-items-center">
+            <div data-tour="polar-map" className="grid h-60 place-items-center">
               <MoonLoader label="Loading the south-pole terrain grid…" />
             </div>
           )}
