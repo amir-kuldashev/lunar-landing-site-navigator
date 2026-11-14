@@ -106,7 +106,7 @@ const STEPS: Step[] = [
   },
 ]
 
-const CARD_W = 380
+const CARD_W = 410
 const GAP = 22
 const PAD = 8
 
@@ -294,30 +294,38 @@ export default function Tour({
     ? { left: r.left - PAD, top: r.top - PAD, width: r.width + 2 * PAD, height: r.height + 2 * PAD }
     : null
 
+  const number = String(i + 1).padStart(2, '0')
+
   return (
     <>
       {/* Dim everything except the lit area. Clicks pass through, so the page stays usable. */}
       {spot ? (
         <div
           aria-hidden
-          className="pointer-events-none fixed z-40 rounded-xl"
+          className="pointer-events-none fixed z-40 rounded-2xl"
           style={{
             ...spot,
-            boxShadow: `0 0 0 2px rgba(88, 166, 232, ${fade}), 0 0 0 200vmax rgba(0, 0, 0, 0.68)`,
-            transition: reduced ? 'none' : 'box-shadow 220ms var(--ease-smooth)',
+            // A hairline, a soft halo, then the dark that covers the rest of the page.
+            boxShadow: `0 0 0 1px rgba(160, 205, 245, ${0.9 * fade}), 0 0 28px 2px rgba(88, 166, 232, ${0.45 * fade}), 0 0 0 200vmax rgba(0, 0, 0, 0.72)`,
+            transition: reduced ? 'none' : 'box-shadow 260ms var(--ease-smooth)',
           }}
         />
       ) : (
-        <div aria-hidden className="pointer-events-none fixed inset-0 z-40 bg-black/60" />
+        <div aria-hidden className="pointer-events-none fixed inset-0 z-40 bg-black/70" />
       )}
 
       {arrow && (
         <svg aria-hidden className="pointer-events-none fixed inset-0 z-50 h-full w-full" style={{ opacity: fade, transition: fadeTransition }}>
-          <path d={arrow.d} fill="none" stroke="#000" strokeWidth="6" strokeLinecap="round" opacity="0.55" />
-          <path d={arrow.d} fill="none" stroke="var(--color-earth)" strokeWidth="2.5" strokeLinecap="round" />
-          <g transform={`translate(${arrow.tip[0]} ${arrow.tip[1]}) rotate(${arrow.angle})`}>
-            <path d="M-15 -8 L0 0 L-15 8" fill="none" stroke="#000" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-            <path d="M-15 -8 L0 0 L-15 8" fill="none" stroke="var(--color-earth)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Keyed by step so the line draws itself once each time a step appears. */}
+          <g key={i} className={reduced ? undefined : 'tour-arrow'}>
+            <path d={arrow.d} pathLength={1} fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth="5" strokeLinecap="round" />
+            <path d={arrow.d} pathLength={1} fill="none" stroke="#bfe0fb" strokeWidth="1.5" strokeLinecap="round" />
+          </g>
+          <g key={`head-${i}`} className={reduced ? undefined : 'tour-arrow-head'}>
+            <g transform={`translate(${arrow.tip[0]} ${arrow.tip[1]}) rotate(${arrow.angle})`}>
+              <path d="M-12 -6 L0 0 L-12 6" fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M-12 -6 L0 0 L-12 6" fill="none" stroke="#bfe0fb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </g>
           </g>
         </svg>
       )}
@@ -325,42 +333,55 @@ export default function Tour({
       <aside
         ref={card}
         role="dialog"
-        aria-label="Guided tour"
-        className="fixed z-50 rounded-xl border border-earth/60 bg-raised p-5 shadow-2xl shadow-black"
+        aria-label={`Guided tour, step ${i + 1} of ${STEPS.length}`}
+        className="tour-glass fixed z-50 overflow-hidden rounded-[22px]"
         style={{
           width: cardW,
           left: layout?.card.left ?? 16,
           top: layout?.card.top ?? 16,
           opacity: fade,
+          transform: visible || reduced ? 'none' : 'translateY(10px) scale(0.985)',
           pointerEvents: visible ? 'auto' : 'none',
-          transition: fadeTransition,
+          transition: reduced ? 'none' : 'opacity 260ms var(--ease-smooth), transform 360ms var(--ease-smooth)',
         }}
       >
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5" aria-label={`Step ${i + 1} of ${STEPS.length}`} role="img">
-            {STEPS.map((_, k) => (
-              <span
-                key={k}
-                className={`h-1.5 rounded-full ${k === i ? 'w-5 bg-earth' : k < i ? 'w-1.5 bg-earth/60' : 'w-1.5 bg-line'}`}
-              />
-            ))}
-          </div>
-          <button className="text-xs text-muted underline hover:text-ink" onClick={close}>
-            Close the tour
-          </button>
+        {/* Progress along the top edge: one segment per step. */}
+        <div className="flex gap-1 px-6 pt-5" role="img" aria-label={`Step ${i + 1} of ${STEPS.length}`}>
+          {STEPS.map((_, k) => (
+            <span key={k} className={`h-[3px] flex-1 rounded-full ${k <= i ? 'bg-white/85' : 'bg-white/18'}`} />
+          ))}
         </div>
-        <h2 className="display mt-3 text-base leading-snug">{step.title}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-ink/90">{step.body}</p>
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <button className="btn" onClick={() => setI((v) => v - 1)} disabled={i === 0}>
-            Back
-          </button>
-          <span className="num text-xs text-muted">
-            {i + 1} of {STEPS.length}
-          </span>
-          <button ref={next} className="btn btn-primary min-w-28" onClick={() => (last ? close() : setI((v) => v + 1))}>
-            {last ? 'Finish' : 'Next'}
-          </button>
+
+        <div className="px-6 pb-5 pt-4">
+          <div className="flex items-start justify-between gap-4">
+            <span className="tour-numeral display num select-none" aria-hidden>
+              {number}
+            </span>
+            <button
+              className="mt-1 rounded-full px-2.5 py-1 text-xs text-white/60 transition-colors duration-(--dur-fast) hover:bg-white/10 hover:text-white"
+              onClick={close}
+            >
+              Skip the tour
+            </button>
+          </div>
+          <h2 className="display mt-1 text-[1.3rem] leading-[1.2] text-white">{step.title}</h2>
+          <p className="mt-3 text-[0.9rem] leading-relaxed text-white/80">{step.body}</p>
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <button
+              className="rounded-full px-3 py-2 text-sm text-white/70 transition-colors duration-(--dur-fast) hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
+              onClick={() => setI((v) => v - 1)}
+              disabled={i === 0}
+            >
+              Back
+            </button>
+            <button
+              ref={next}
+              className="tour-next rounded-full px-6 py-2.5 text-sm font-semibold"
+              onClick={() => (last ? close() : setI((v) => v + 1))}
+            >
+              {last ? 'Finish the tour' : 'Next'}
+            </button>
+          </div>
         </div>
       </aside>
     </>
