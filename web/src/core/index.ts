@@ -17,3 +17,4 @@ export { horizonElevation, sphereHorizon, diskVisibleFraction, DEFAULT_MAST_M } 
 export { subPoint, siteVector, azElRange, R_MOON_KM } from './frames'
 export { loadPolarGrid, parsePolarGrid, gridHorizon, scoreGrid } from './grid'
 export type { PolarGrid, GridScores } from './grid'
+export { loadTerrain, patchHeight } from './terrain'

@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { gridHorizon, loadPolarGrid, scoreGrid, type HorizonProfile, type PolarGrid, type Site } from '../core'
+import {
+  gridHorizon,
+  loadPolarGrid,
+  scoreGrid,
+  type HorizonProfile,
+  type PolarGrid,
+  type Site,
+  type TerrainPatch,
+} from '../core'
 import { HOUR, latLon } from '../lib/format'
 import { useSize } from '../lib/useSize'
 import MoonLoader from './MoonLoader'
@@ -15,7 +23,7 @@ interface Props {
   days: number
   weights: [number, number, number]
   current: Site
-  onPick: (lat: number, lon: number, horizon: HorizonProfile) => void
+  onPick: (lat: number, lon: number, horizon: HorizonProfile, terrain?: TerrainPatch) => void
 }
 
 const R_KM = 1737.4
@@ -196,7 +204,55 @@ export default function PolarMap({ sites, t, days, weights, current, onPick }: P
     const i = geo.index[iy * geo.side + ix]
     return i >= 0 ? i : null
   }
-  const open = (i: number) => grid && onPick(grid.lat[i], grid.lon[i], gridHorizon(grid, i))
+  /**
+   * A block of terrain around a grid cell for the landscape view, built from the cells around it.
+   * Coarse (one height per 4 km cell) but real, and aligned to local east and north like the named sites' blocks.
+   */
+  const patchAround = (i: number): TerrainPatch | undefined => {
+    if (!grid || !geo) return undefined
+    const n = 17
+    const widthKm = (n - 1) * grid.spacingKm
+    const lat0 = grid.lat[i] * DEG
+    const lon0 = grid.lon[i] * DEG
+    const heights = new Int16Array(n * n)
+    let low = Infinity
+    let high = -Infinity
+    for (let row = 0; row < n; row++) {
+      for (let col = 0; col < n; col++) {
+        const east = (col / (n - 1) - 0.5) * widthKm
+        const north = (0.5 - row / (n - 1)) * widthKm
+        // Great-circle step from the cell by (east, north).
+        const d = Math.hypot(east, north) / R_KM
+        const az = Math.atan2(east, north)
+        const sinLat = Math.sin(lat0) * Math.cos(d) + Math.cos(lat0) * Math.sin(d) * Math.cos(az)
+        const lat = Math.asin(Math.min(1, Math.max(-1, sinLat)))
+        const lon = lon0 + Math.atan2(Math.sin(az) * Math.sin(d) * Math.cos(lat0), Math.cos(d) - Math.sin(lat0) * sinLat)
+        const [x, y] = project(lat / DEG, lon / DEG)
+        const ix = Math.round(x / grid.spacingKm) + geo.half
+        const iy = Math.round(y / grid.spacingKm) + geo.half
+        const k = ix >= 0 && iy >= 0 && ix < geo.side && iy < geo.side ? geo.index[iy * geo.side + ix] : -1
+        const h = k >= 0 ? grid.height[k] : grid.height[i]
+        heights[row * n + col] = h
+        if (Math.hypot(east, north) <= 10) {
+          low = Math.min(low, h)
+          high = Math.max(high, h)
+        }
+      }
+    }
+    return {
+      n,
+      width_km: widthKm,
+      heights,
+      spacing_m: grid.spacingKm * 1000,
+      resolution_m: grid.spacingKm * 1000,
+      height_m: grid.height[i],
+      slope_deg: grid.slope[i] * grid.slopeUnit,
+      slope_baseline_m: 160,
+      low_10km_m: low,
+      high_10km_m: high,
+    }
+  }
+  const open = (i: number) => grid && onPick(grid.lat[i], grid.lon[i], gridHorizon(grid, i), patchAround(i))
 
   // The wrapper below must exist on the first render so its width can be measured.
   if (error || !grid || !scores) {

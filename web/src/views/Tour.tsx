@@ -45,7 +45,7 @@ const STEPS: Step[] = [
   {
     target: [at('moon')],
     title: 'The Moon as it is lit right now',
-    body: 'The bright side faces the real Sun for the chosen moment. The white ring is the lander\'s horizon; the yellow pointer aims at the Sun and the blue one at Earth. Drag to turn the Moon, or switch to "Sun, Moon and Earth" to step back.',
+    body: 'The bright side faces the real Sun for the chosen moment. The white ring is the lander\'s horizon; the yellow pointer aims at the Sun and the blue one at Earth. The card in the corner describes the ground here; "Landscape" shows it in 3D, and "Sun, Moon and Earth" steps back.',
     setup: (a) => {
       a.setPlaying(false)
       a.setGlobeView('site')

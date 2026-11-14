@@ -1,5 +1,15 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { events, getEphemeris, loadEphemeris, summary, topo, type HorizonProfile, type Site } from './core'
+import {
+  events,
+  getEphemeris,
+  loadEphemeris,
+  loadTerrain,
+  summary,
+  topo,
+  type HorizonProfile,
+  type Site,
+  type TerrainPatch,
+} from './core'
 import { DAY, HOUR, dateUTC, fromInputValue, latLon, timeUTC, toInputValue } from './lib/format'
 import type { Mission } from './lib/scoring'
 import { buildUrl, readUrlState } from './lib/urlState'
@@ -9,6 +19,7 @@ import MoonLoader from './views/MoonLoader'
 import Panorama from './views/Panorama'
 import Readouts from './views/Readouts'
 import Recommend, { type RankView } from './views/Recommend'
+import TerrainCard from './views/TerrainCard'
 import ScheduleSlip from './views/ScheduleSlip'
 import Timeline from './views/Timeline'
 import Tour, { type TourActions } from './views/Tour'
@@ -16,7 +27,7 @@ import YearStrip from './views/YearStrip'
 
 // three.js is the heaviest part of the page; load it after the instruments are on screen.
 const Globe = lazy(() => import('./views/Globe'))
-type GlobeView = 'site' | 'system'
+type GlobeView = 'site' | 'terrain' | 'system'
 
 const WINDOW_DAYS = 30
 const SPEEDS = [
@@ -48,8 +59,11 @@ export default function App() {
   // ?tour=1 starts the guided tour straight away, for links aimed at first-time visitors (?tour=3 opens on step 3).
   const [tourStart] = useState(() => Number(new URLSearchParams(window.location.search).get('tour')) || 0)
   const [touring, setTouring] = useState(tourStart > 0)
-  const [globeView, setGlobeView] = useState<GlobeView>(() =>
-    new URLSearchParams(window.location.search).get('view') === 'system' ? 'system' : 'site',
+  const [globeView, setGlobeView] = useState<GlobeView>(() => {
+      // ?view=system or ?view=terrain opens the 3D panel on that view.
+      const v = new URLSearchParams(window.location.search).get('view')
+      return v === 'system' || v === 'terrain' ? v : 'site'
+    },
   )
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
@@ -59,11 +73,17 @@ export default function App() {
 
   useEffect(() => {
     const base = `${import.meta.env.BASE_URL}data`
-    Promise.all([loadEphemeris(), fetch(`${base}/sites.json`).then((r) => r.json() as Promise<Site[]>)])
-      .then(async ([, list]) => {
+    Promise.all([
+      loadEphemeris(),
+      fetch(`${base}/sites.json`).then((r) => r.json() as Promise<Site[]>),
+      loadTerrain(),
+    ])
+      .then(async ([, list, terrain]) => {
         // Terrain horizons are optional per site; a missing file means a smooth-sphere horizon.
         const withHorizons = await Promise.all(
-          list.map(async (s) => {
+          list.map(async (bare) => {
+            // The block of terrain around the site, for the landscape view.
+            const s = { ...bare, terrain: terrain.get(bare.id) }
             try {
               const r = await fetch(`${base}/horizons/${s.id}.json`)
               if (!r.ok || !r.headers.get('content-type')?.includes('json')) return s
@@ -162,8 +182,8 @@ export default function App() {
   const range = getEphemeris().range
   const outOfRange = t < range[0] || t > range[1]
   // A point from the south-pole map brings its terrain skyline; a double-click on the globe does not.
-  const pickPoint = (lat: number, lon: number, horizon?: HorizonProfile) => {
-    setCustom({ ...CUSTOM, lat: Number(lat.toFixed(3)), lon: Number(lon.toFixed(3)), horizon })
+  const pickPoint = (lat: number, lon: number, horizon?: HorizonProfile, terrain?: TerrainPatch) => {
+    setCustom({ ...CUSTOM, lat: Number(lat.toFixed(3)), lon: Number(lon.toFixed(3)), horizon, terrain })
     setSiteId('custom')
   }
   const pin = () =>
@@ -172,6 +192,8 @@ export default function App() {
         .filter((s, i, a) => a.findIndex((x) => x.key === s.key) === i)
         .slice(-6),
     )
+  // The landscape view needs a block of terrain; without one, fall back to the Moon.
+  const view3d: GlobeView = globeView === 'terrain' && !site.terrain ? 'site' : globeView
   const tourActions: TourActions = {
     openSite: (id) => catalog.some((s) => s.id === id) && setSiteId(id),
     setTime: changeTime,
@@ -231,7 +253,8 @@ export default function App() {
                   value={custom.lat}
                   onChange={(e) => {
                     const v = Number(e.target.value)
-                    if (Number.isFinite(v)) setCustom({ ...custom, lat: Math.min(90, Math.max(-90, v)), horizon: undefined })
+                    if (Number.isFinite(v))
+                      setCustom({ ...custom, lat: Math.min(90, Math.max(-90, v)), horizon: undefined, terrain: undefined })
                   }}
                 />
               </label>
@@ -246,7 +269,8 @@ export default function App() {
                   value={custom.lon}
                   onChange={(e) => {
                     const v = Number(e.target.value)
-                    if (Number.isFinite(v)) setCustom({ ...custom, lon: Math.min(360, Math.max(-180, v)), horizon: undefined })
+                    if (Number.isFinite(v))
+                      setCustom({ ...custom, lon: Math.min(360, Math.max(-180, v)), horizon: undefined, terrain: undefined })
                   }}
                 />
               </label>
@@ -324,7 +348,7 @@ export default function App() {
               </div>
             }
           >
-            <Globe sites={sites} site={site} now={now} view={globeView} onSelect={setSiteId} onPick={pickPoint} />
+            <Globe sites={sites} site={site} now={now} view={view3d} onSelect={setSiteId} onPick={pickPoint} />
           </Suspense>
           <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-4">
             <div>
@@ -338,13 +362,16 @@ export default function App() {
                 {(
                   [
                     ['site', 'Landing site'],
+                    ['terrain', 'Landscape'],
                     ['system', 'Sun, Moon and Earth'],
                   ] as const
                 ).map(([id, label]) => (
                   <button
                     key={id}
-                    className={`btn min-h-7! px-2! text-xs! ${globeView === id ? 'btn-primary' : ''}`}
-                    aria-pressed={globeView === id}
+                    className={`btn min-h-7! px-2! text-xs! ${view3d === id ? 'btn-primary' : ''}`}
+                    aria-pressed={view3d === id}
+                    disabled={id === 'terrain' && !site.terrain}
+                    title={id === 'terrain' && !site.terrain ? 'No terrain data for this point' : undefined}
                     onClick={() => setGlobeView(id)}
                   >
                     {label}
@@ -353,9 +380,14 @@ export default function App() {
               </div>
             </div>
           </div>
-          <p className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-xs text-muted">
-            Drag to turn the Moon. Double-click the surface to place a custom point. Directions are true; sizes
-            and distances are not. Earth is really 3.7 times the Moon's width and the Sun 109 times Earth's.
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-3 p-4">
+            {view3d !== 'system' && (
+              <TerrainCard site={site} inLandscape={view3d === 'terrain'} onLandscape={() => setGlobeView('terrain')} />
+            )}
+          <p className="text-xs text-muted">
+            {view3d === 'terrain'
+              ? 'Drag to look around. The terrain is at true vertical scale and the Sun shines from its real direction for this moment. Shadows come only from ground inside this block, and the lander marker is enlarged.'
+              : "Drag to turn the Moon. Double-click the surface to place a custom point. Directions are true; sizes and distances are not. Earth is really 3.7 times the Moon's width and the Sun 109 times Earth's."}
             {site.source_url && (
               <>
                 {' '}
@@ -372,6 +404,7 @@ export default function App() {
               </>
             )}
           </p>
+          </div>
         </section>
 
         <div data-tour="readouts" className="enter" style={{ animationDelay: '120ms' }}>

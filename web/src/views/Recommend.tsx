@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { summary, topo, type HorizonProfile, type Site } from '../core'
+import { summary, topo, type HorizonProfile, type Site, type TerrainPatch } from '../core'
 import { HOUR, dateUTC, duration } from '../lib/format'
 import { priorityOf, type Mission } from '../lib/scoring'
 import MissionControls from './MissionControls'
@@ -16,7 +16,7 @@ interface Props {
   current: Site
   onOpen: (id: string) => void
   /** Open an arbitrary point (from the south-pole map) with its own terrain skyline. */
-  onPickPoint: (lat: number, lon: number, horizon: HorizonProfile) => void
+  onPickPoint: (lat: number, lon: number, horizon: HorizonProfile, terrain?: TerrainPatch) => void
   mission: Mission
   onMission: (m: Mission) => void
   /** Which ranking is showing: the named sites, or the whole south pole on a map. */

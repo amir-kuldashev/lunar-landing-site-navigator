@@ -6,6 +6,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { getEphemeris, siteVector, type Site, type Topo, type Vec3 } from '../core'
 import { MOON_CURSOR } from '../lib/cursors'
 import { useReducedMotion } from '../lib/motion'
+import Landscape from './Landscape'
 import { Sky } from './SkyBodies'
 import { SYSTEM_VIEW_DISTANCE } from './skyScale'
 
@@ -194,8 +195,13 @@ function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view
 
   useEffect(() => {
     let dir = unit(siteVector(site.lat, site.lon, 0))
-    let dist = 3.1
-    if (view === 'system') {
+    // Close enough that the region around the site fills the view.
+    let dist = 2.45
+    if (view === 'terrain') {
+      // The landscape block sits at the origin: look at it from the south, raised, slightly east of centre.
+      dir = new THREE.Vector3(0.28, 0.62, 0.74).normalize()
+      dist = 15.5
+    } else if (view === 'system') {
       // Stand back, square-on to the plane holding the Sun, Moon and Earth, on the site's side of it.
       const { sun, earth } = getEphemeris().sunEarth(t)
       const normal = unit(earth).cross(unit(sun))
@@ -239,8 +245,10 @@ function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view
       enableDamping
       dampingFactor={0.08}
       rotateSpeed={0.5}
-      minDistance={1.35}
-      maxDistance={90}
+      minDistance={view === 'terrain' ? 4 : 1.35}
+      maxDistance={view === 'terrain' ? 34 : 90}
+      // Over the landscape block, stay above the ground.
+      maxPolarAngle={view === 'terrain' ? Math.PI * 0.48 : Math.PI}
       onStart={() => {
         flight.current = null
         gl.domElement.style.cursor = MOON_CURSOR.drag
@@ -252,8 +260,11 @@ function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view
   )
 }
 
-/** "site" looks down on the landing site; "system" pulls back to show the Moon, Earth and Sun together. */
-export type GlobeView = 'site' | 'system'
+/**
+ * "site" looks down on the landing site, "terrain" shows the ground around it as a 3D block,
+ * "system" pulls back to show the Moon, Earth and Sun together.
+ */
+export type GlobeView = 'site' | 'terrain' | 'system'
 
 export interface GlobeProps {
   view: GlobeView
@@ -269,6 +280,7 @@ export default function Globe({ sites, site, now, view, onSelect, onPick }: Glob
     <Canvas
       camera={{ position: [0, 0.6, 7.5], fov: 34, near: 0.05, far: 400 }}
       dpr={[1, 2]}
+      shadows
       gl={{ antialias: true }}
       onCreated={({ gl }) => {
         gl.domElement.style.cursor = MOON_CURSOR.idle
@@ -284,12 +296,18 @@ export default function Globe({ sites, site, now, view, onSelect, onPick }: Glob
       */}
       <Html style={{ display: 'none' }} />
       <Stars radius={120} depth={40} count={2600} factor={3.2} saturation={0} fade speed={0} />
-      <Sky t={now.t} />
-      <Moon onPick={onPick} />
-      {sites.map((s) => (
-        <SitePin key={s.id} site={s} selected={s.id === site.id} onSelect={onSelect} />
-      ))}
-      <SiteGeometry site={site} now={now} />
+      {view === 'terrain' && site.terrain ? (
+        <Landscape site={site} now={now} />
+      ) : (
+        <>
+          <Sky t={now.t} />
+          <Moon onPick={onPick} />
+          {sites.map((s) => (
+            <SitePin key={s.id} site={s} selected={s.id === site.id} onSelect={onSelect} />
+          ))}
+          <SiteGeometry site={site} now={now} />
+        </>
+      )}
       <CameraRig site={site} view={view} t={now.t} flyKey={`${site.id}:${site.lat.toFixed(3)}:${site.lon.toFixed(3)}`} />
     </Canvas>
   )

@@ -14,6 +14,26 @@ export interface HorizonProfile {
   source?: string
 }
 
+/** A square block of terrain centred on a site, aligned to local east and north. */
+export interface TerrainPatch {
+  /** Samples per side. */
+  n: number
+  width_km: number
+  /** n*n heights in metres above the 1737.4 km sphere: rows from the north edge to the south, each west to east. */
+  heights: Int16Array
+  spacing_m: number
+  /** Pixel size of the elevation model the block was cut from, metres. */
+  resolution_m: number
+  /** Terrain height at the site itself, metres. */
+  height_m: number
+  /** Slope of the ground at the site, degrees, measured over slope_baseline_m. */
+  slope_deg: number
+  slope_baseline_m: number
+  /** Lowest and highest ground within 10 km of the site, metres. */
+  low_10km_m: number
+  high_10km_m: number
+}
+
 export interface Site {
   id: string
   name: string
@@ -36,6 +56,8 @@ export interface Site {
   verified?: boolean
   /** Terrain horizon if one has been computed; otherwise a smooth-sphere horizon is used. */
   horizon?: HorizonProfile
+  /** Block of terrain around the site for the 3D landscape view, where elevation data is available. */
+  terrain?: TerrainPatch
 }
 
 /** Positions of the Sun and Earth relative to the Moon's centre, in the Moon Mean-Earth body-fixed frame. */
