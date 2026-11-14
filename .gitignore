@@ -1,0 +1,31 @@
+# Node
+node_modules/
+dist/
+.vite/
+*.local
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.python-version
+
+# Large raw inputs: never commit (download via pipeline scripts)
+pipeline/kernels/
+pipeline/dem/
+*.bsp
+*.bpc
+*.tif
+*.tiff
+*.img
+*.jp2
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Secrets
+.env
+.env.*
