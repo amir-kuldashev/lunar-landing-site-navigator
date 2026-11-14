@@ -6,6 +6,7 @@ import Panorama from './views/Panorama'
 import Readouts from './views/Readouts'
 import ScheduleSlip from './views/ScheduleSlip'
 import Timeline from './views/Timeline'
+import YearStrip from './views/YearStrip'
 
 // three.js is the heaviest part of the page; load it after the instruments are on screen.
 const Globe = lazy(() => import('./views/Globe'))
@@ -296,6 +297,18 @@ export default function App() {
             }}
           />
         </div>
+      </section>
+
+      <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '220ms' }}>
+        <h2 className="mb-3 text-sm font-medium">The whole year at this site</h2>
+        <YearStrip
+          site={site}
+          t={t}
+          onChange={(next) => {
+            setPlaying(false)
+            changeTime(next)
+          }}
+        />
       </section>
 
       <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '240ms' }}>
