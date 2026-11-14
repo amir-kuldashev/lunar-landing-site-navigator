@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { getEphemeris, siteVector, type Site, type Topo, type Vec3 } from '../core'
 import { useReducedMotion } from '../lib/motion'
+import { Sky, SYSTEM_VIEW_DISTANCE } from './SkyBodies'
 
 /**
  * 3D Moon lit by the real Sun direction for the selected time, so the day/night line is true.
@@ -180,138 +181,6 @@ function SiteGeometry({ site, now }: { site: Site; now: Topo }) {
   )
 }
 
-/** Share of the Sun sprite's half-width taken by the solid disc; the rest is glow. */
-const SUN_DISC = 0.45
-
-/** A glowing disc for the Sun, drawn once on a canvas. */
-function useSunTexture() {
-  return useMemo(() => {
-    const size = 256
-    const canvas = document.createElement('canvas')
-    canvas.width = canvas.height = size
-    const ctx = canvas.getContext('2d')!
-    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
-    g.addColorStop(0, 'rgba(255,255,255,1)')
-    g.addColorStop(0.36, 'rgba(255,250,232,1)')
-    g.addColorStop(SUN_DISC, 'rgba(255,228,150,0.95)')
-    g.addColorStop(0.56, 'rgba(244,197,90,0.3)')
-    g.addColorStop(1, 'rgba(244,197,90,0)')
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, size, size)
-    const tex = new THREE.CanvasTexture(canvas)
-    tex.colorSpace = THREE.SRGBColorSpace
-    return tex
-  }, [])
-}
-
-/** A short word as a texture, for labels that live in the 3D scene. */
-function useTextTexture(text: string, color: string) {
-  return useMemo(() => {
-    const canvas = document.createElement('canvas')
-    canvas.width = 384
-    canvas.height = 128
-    const ctx = canvas.getContext('2d')!
-    ctx.font = '600 76px Archivo, system-ui, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = color
-    ctx.fillText(text, 192, 68)
-    const tex = new THREE.CanvasTexture(canvas)
-    tex.colorSpace = THREE.SRGBColorSpace
-    return tex
-  }, [text, color])
-}
-
-function useEarthTexture() {
-  const [map, setMap] = useState<THREE.Texture | null>(null)
-  useEffect(() => {
-    new THREE.TextureLoader().load(
-      `${import.meta.env.BASE_URL}textures/earth_color.jpg`,
-      (t) => {
-        t.colorSpace = THREE.SRGBColorSpace
-        setMap(t)
-      },
-      undefined,
-      () => console.warn('Earth texture missing; using a plain blue sphere'),
-    )
-  }, [])
-  return map
-}
-
-/*
-  Sizes in the scene, in lunar radii (the Moon is 1).
-  Earth is drawn in true proportion to the Moon: 3.67 times wider.
-  The Sun cannot be: it is 109 times wider than Earth and 390 times farther away than Earth is.
-  It is drawn larger than Earth so the order of sizes is right, and far closer than it really is.
-  Directions from the Moon are true for both.
-*/
-const EARTH_RADIUS = 3.67
-const EARTH_DISTANCE = 13
-const SUN_RADIUS = 6.5
-const SUN_DISTANCE = 26
-const SYSTEM_VIEW_DISTANCE = 100
-const EARTH_TILT = (23.4 * Math.PI) / 180
-const EARTH_TURN_MS = 24.84 * 3600000 // one turn as seen from the Moon
-
-/**
- * The Sun and Earth, each in its true direction from the Moon for the chosen time.
- * Directions and Earth's lit phase are real. Earth is in true proportion to the Moon; the Sun's size and
- * both distances are compressed (see the constants above). Earth's spin is approximate: the right rate,
- * not the exact face.
- */
-function Sky({ t }: { t: number }) {
-  const { sun, earth } = getEphemeris().sunEarth(t)
-  const sunDir = unit(sun)
-  const sunPos = sunDir.clone().multiplyScalar(60)
-  const earthPos = unit(earth).multiplyScalar(EARTH_DISTANCE)
-  const sunTex = useSunTexture()
-  const sunLabel = useTextTexture('Sun', '#f4c55a')
-  const earthLabel = useTextTexture('Earth', '#58a6e8')
-  const earthTex = useEarthTexture()
-  const spin = ((t % EARTH_TURN_MS) / EARTH_TURN_MS) * Math.PI * 2
-  return (
-    <>
-      <ambientLight intensity={0.16} />
-      <directionalLight position={sunPos} intensity={3.4} color="#fff6e6" />
-
-      <group position={sunDir.clone().multiplyScalar(SUN_DISTANCE)}>
-        <sprite scale={[(2 * SUN_RADIUS) / SUN_DISC, (2 * SUN_RADIUS) / SUN_DISC, 1]}>
-          <spriteMaterial map={sunTex} blending={THREE.AdditiveBlending} depthWrite={false} transparent toneMapped={false} />
-        </sprite>
-        {/* Name tag drawn in the scene, anchored just under the disc. */}
-        <sprite scale={[9, 3, 1]} center={[0.5, 0.5 + (SUN_RADIUS + 3.2) / 3]}>
-          <spriteMaterial map={sunLabel} depthWrite={false} transparent toneMapped={false} />
-        </sprite>
-      </group>
-
-      <group position={earthPos}>
-        <group rotation={[EARTH_TILT, 0, 0]}>
-          <mesh rotation={[0, spin, 0]}>
-            <sphereGeometry args={[EARTH_RADIUS, 96, 48]} />
-            <meshStandardMaterial
-              key={earthTex ? 'tex' : 'plain'}
-              map={earthTex}
-              color={earthTex ? '#ffffff' : '#3f86cf'}
-              emissive="#0a1c33"
-              emissiveIntensity={0.5}
-              roughness={0.85}
-              metalness={0}
-            />
-          </mesh>
-        </group>
-        {/* Thin blue rim for the atmosphere. */}
-        <mesh>
-          <sphereGeometry args={[EARTH_RADIUS * 1.045, 64, 32]} />
-          <meshBasicMaterial color="#6cb6ff" transparent opacity={0.16} side={THREE.BackSide} depthWrite={false} />
-        </mesh>
-        <sprite scale={[9, 3, 1]} center={[0.5, 0.5 + (EARTH_RADIUS + 2.4) / 3]}>
-          <spriteMaterial map={earthLabel} depthWrite={false} transparent toneMapped={false} />
-        </sprite>
-      </group>
-    </>
-  )
-}
-
 /** Flies the camera to look down on the selected site; a drag by the visitor cancels the flight. */
 function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view: GlobeView; t: number }) {
   const { camera } = useThree()
@@ -367,7 +236,7 @@ function CameraRig({ site, flyKey, view, t }: { site: Site; flyKey: string; view
       dampingFactor={0.08}
       rotateSpeed={0.5}
       minDistance={1.35}
-      maxDistance={115}
+      maxDistance={80}
       onStart={() => {
         flight.current = null
       }}

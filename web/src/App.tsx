@@ -320,9 +320,8 @@ export default function App() {
             </div>
           </div>
           <p className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-xs text-muted">
-            Drag to turn the Moon. Double-click the surface to place a custom point. Earth and the Moon are
-            in true proportion and directions are true. The Sun is really 109 times wider than Earth, and both are
-            drawn far closer than they are.
+            Drag to turn the Moon. Double-click the surface to place a custom point. Directions are true; sizes
+            and distances are not. Earth is really 3.7 times the Moon's width and the Sun 109 times Earth's.
             {site.source_url && (
               <>
                 {' '}
