@@ -273,14 +273,16 @@ export interface GlobeProps {
   now: Topo
   onSelect: (id: string) => void
   onPick: (lat: number, lon: number) => void
+  /** Landscape view only: colour the ground by height instead of lighting it with the real Sun. */
+  terrainColours?: boolean
 }
 
-export default function Globe({ sites, site, now, view, onSelect, onPick }: GlobeProps) {
+export default function Globe({ sites, site, now, view, onSelect, onPick, terrainColours = true }: GlobeProps) {
   return (
     <Canvas
       camera={{ position: [0, 0.6, 7.5], fov: 34, near: 0.05, far: 400 }}
       dpr={[1, 2]}
-      shadows
+      shadows="soft"
       gl={{ antialias: true }}
       onCreated={({ gl }) => {
         gl.domElement.style.cursor = MOON_CURSOR.idle
@@ -297,7 +299,7 @@ export default function Globe({ sites, site, now, view, onSelect, onPick }: Glob
       <Html style={{ display: 'none' }} />
       <Stars radius={120} depth={40} count={2600} factor={3.2} saturation={0} fade speed={0} />
       {view === 'terrain' && site.terrain ? (
-        <Landscape site={site} now={now} />
+        <Landscape site={site} now={now} coded={terrainColours} />
       ) : (
         <>
           <Sky t={now.t} />

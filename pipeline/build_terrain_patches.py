@@ -7,8 +7,11 @@
 For every site in web/public/data/sites.json this samples a grid of heights centred on the site,
 aligned to local east and north, from the finest LOLA model covering each point.
 
-  South of 80S (80 m polar model):  60 km across, 97 x 97 samples (625 m apart)
-  Elsewhere (1.9 km global model): 160 km across, 81 x 81 samples (2 km apart)
+  South of 80S (80 m polar model):       48 km across, 321 x 321 samples (150 m apart)
+  Elsewhere (237 m global model LDEM_128): 64 km across, 257 x 257 samples (250 m apart)
+
+The global 237 m model is 2.1 GB, so only the band of rows around each site is downloaded
+(about 27 MB per site, cached in pipeline/dem/).
 
 It also records a few facts about the ground at the site itself: height, slope, and the lowest and
 highest ground within 10 km.
@@ -25,6 +28,7 @@ from __future__ import annotations
 
 import json
 import sys
+import urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -43,6 +47,52 @@ def local_points(lat: float, lon: float, east_m: np.ndarray, north_m: np.ndarray
     return destination(lat, lon, az, dist)
 
 
+class BandDem(Dem):
+    """A band of rows from a large global model, fetched with an HTTP range request.
+
+    LDEM_128: 128 pixels per degree (about 237 m), 46080 x 23040, int16, 0.5 m per unit, pixel-registered.
+    """
+
+    PPD = 128
+    SAMPLES = 46080
+    LINES = 23040
+
+    def __init__(self, lat: float, half_width_m: float):
+        super().__init__("LDEM_128", f"{BASE}/CYLINDRICAL/IMG", "global")
+        margin = np.degrees(half_width_m / R_M) * 1.1 + 0.1
+        self.r0 = max(0, int(np.floor((90.0 - (lat + margin)) * self.PPD - 0.5)))
+        self.r1 = min(self.LINES - 1, int(np.ceil((90.0 - (lat - margin)) * self.PPD - 0.5)) + 1)
+        self.ppd = float(self.PPD)
+        self.samples = self.SAMPLES
+        self.lines = self.r1 - self.r0 + 1
+        self.scale = 0.5
+
+    def load(self) -> "BandDem":
+        DEM_DIR = HERE / "dem"
+        DEM_DIR.mkdir(exist_ok=True)
+        cache = DEM_DIR / f"LDEM_128_rows_{self.r0}_{self.r1}.bin"
+        want = self.lines * self.SAMPLES * 2
+        if not cache.exists() or cache.stat().st_size != want:
+            start = self.r0 * self.SAMPLES * 2
+            print(f"  downloading rows {self.r0}..{self.r1} of LDEM_128 ({want / 1e6:.0f} MB) ...", flush=True)
+            req = urllib.request.Request(f"{self.url}/LDEM_128.IMG", headers={"Range": f"bytes={start}-{start + want - 1}"})
+            tmp = cache.with_suffix(".part")
+            with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
+                while chunk := r.read(1 << 20):
+                    f.write(chunk)
+            if tmp.stat().st_size != want:
+                raise RuntimeError(f"short download: {tmp.stat().st_size} of {want} bytes")
+            tmp.rename(cache)
+        self.data = np.memmap(cache, dtype="<i2", mode="r", shape=(self.lines, self.SAMPLES))
+        return self
+
+    def pixel(self, lat: np.ndarray, lon: np.ndarray):
+        col = (np.mod(lon, 360.0) * self.ppd - 0.5) % self.samples
+        row = (90.0 - lat) * self.ppd - 0.5 - self.r0
+        ok = (row >= 0) & (row <= self.lines - 1)
+        return row, col, ok
+
+
 def main() -> int:
     dems = [
         Dem("LDEM_80S_80M", f"{BASE}/POLAR/IMG", "polar_south").load(),
@@ -55,23 +105,30 @@ def main() -> int:
     for site in json.loads(SITES_JSON.read_text()):
         lat, lon = float(site["lat"]), float(site["lon"])
         _, used = heights(dems, np.array([lat]), np.array([lon]))
-        res = dems[int(used[0])].resolution_m
-        polar = res < 500
-        n, width_m = (97, 60_000.0) if polar else (81, 160_000.0)
+        polar = dems[int(used[0])].resolution_m < 500
+        if polar:
+            n, width_m = 321, 48_000.0
+            site_dems = dems
+        else:
+            # Away from the pole the models on disk are 1.9 km; fetch the 237 m band around this site.
+            n, width_m = 257, 64_000.0
+            site_dems = [BandDem(lat, width_m / 2).load(), *dems]
+        _, used = heights(site_dems, np.array([lat]), np.array([lon]))
+        res = site_dems[int(used[0])].resolution_m
 
         axis = (np.arange(n) / (n - 1) - 0.5) * width_m
         east, north = np.meshgrid(axis, -axis)  # row 0 is the north edge
         plat, plon = local_points(lat, lon, east, north)
-        h, _ = heights(dems, plat, plon)
+        h, _ = heights(site_dems, plat, plon)
 
         # Ground at the site: slope across two model pixels, by central differences.
         b = res
         e = np.array([b, -b, 0.0, 0.0])
         nn = np.array([0.0, 0.0, b, -b])
         slat, slon = local_points(lat, lon, e, nn)
-        sh, _ = heights(dems, slat, slon)
+        sh, _ = heights(site_dems, slat, slon)
         slope = float(np.degrees(np.arctan(np.hypot((sh[0] - sh[1]) / (2 * b), (sh[2] - sh[3]) / (2 * b)))))
-        h0 = float(heights(dems, np.array([lat]), np.array([lon]))[0][0])
+        h0 = float(heights(site_dems, np.array([lat]), np.array([lon]))[0][0])
         near = np.hypot(east, north) <= 10_000.0
 
         data = np.clip(np.round(h), -32768, 32767).astype("<i2").tobytes()

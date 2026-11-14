@@ -31,6 +31,7 @@ Downloaded artefacts are git-ignored:
 | LOLA GDR south polar, 80 m/pixel (80S to pole) | https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDEM_80S_80M.IMG | build_horizons.py |
 | LOLA GDR south polar, 240 m/pixel (75S to pole) | https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDEM_75S_240M.IMG | build_horizons.py |
 | LOLA GDR global, 16 pixels/degree (about 1.9 km) | https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/LDEM_16.IMG | build_horizons.py |
+| LOLA GDR global, 128 pixels/degree (about 237 m) | https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/LDEM_128.IMG | build_terrain_patches.py |
 | NASA SVS CGI Moon Kit (colour and elevation textures) | https://svs.gsfc.nasa.gov/4720 | web/public/textures |
 | NASA SVS Blue Marble Earth map (visualization 3615) | https://svs.gsfc.nasa.gov/3615 | web/public/textures/earth_color.jpg |
 
@@ -80,10 +81,12 @@ cap, in deep craters where the Sun and Earth never get that high anyway). The sl
 
 ### `web/public/data/terrain.bin`
 A square block of terrain around each named site, for the 3D landscape view and the "ground here" card.
-South of 80S: 60 km across, 97 x 97 heights (625 m apart) from the 80 m model. Elsewhere: 160 km across,
-81 x 81 heights (2 km apart) from the global 1.9 km model. Rows run north to south, each west to east,
-aligned to local east and north. `terrain.json` gives each site's offset and a few facts about the ground at
-the site: height, slope (over two model pixels), and the lowest and highest ground within 10 km. About 300 kB.
+South of 80S: 48 km across, 321 x 321 heights (150 m apart) from the 80 m polar model. Elsewhere: 64 km
+across, 257 x 257 heights (250 m apart) from the 237 m global model (LDEM_128). That model is 2.1 GB, so the
+script downloads only the band of rows around each site (about 30 MB per site, cached in `pipeline/dem/`).
+Rows run north to south, each west to east, aligned to local east and north. `terrain.json` gives each
+site's offset and a few facts about the ground at the site: height, slope (over two model pixels), and the
+lowest and highest ground within 10 km. About 3.2 MB; the app loads it after the page is up.
 
 ### `web/src/core/fixtures/horizons.json`
 JPL Horizons API test fixtures: Sun and Earth az/el at 10 geometry test points, 53 times each over a year,

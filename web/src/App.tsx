@@ -11,6 +11,7 @@ import {
   type TerrainPatch,
 } from './core'
 import { DAY, HOUR, dateUTC, fromInputValue, latLon, timeUTC, toInputValue } from './lib/format'
+import { HEIGHT_GRADIENT, heightRange } from './lib/heightColours'
 import type { Mission } from './lib/scoring'
 import { buildUrl, readUrlState } from './lib/urlState'
 import BestDates from './views/BestDates'
@@ -59,6 +60,8 @@ export default function App() {
   // ?tour=1 starts the guided tour straight away, for links aimed at first-time visitors (?tour=3 opens on step 3).
   const [tourStart] = useState(() => Number(new URLSearchParams(window.location.search).get('tour')) || 0)
   const [touring, setTouring] = useState(tourStart > 0)
+  // Landscape view: colour the ground by height (like NASA's coded-colour maps) or light it with the real Sun.
+  const [terrainColours, setTerrainColours] = useState(true)
   const [globeView, setGlobeView] = useState<GlobeView>(() => {
       // ?view=system or ?view=terrain opens the 3D panel on that view.
       const v = new URLSearchParams(window.location.search).get('view')
@@ -73,17 +76,11 @@ export default function App() {
 
   useEffect(() => {
     const base = `${import.meta.env.BASE_URL}data`
-    Promise.all([
-      loadEphemeris(),
-      fetch(`${base}/sites.json`).then((r) => r.json() as Promise<Site[]>),
-      loadTerrain(),
-    ])
-      .then(async ([, list, terrain]) => {
+    Promise.all([loadEphemeris(), fetch(`${base}/sites.json`).then((r) => r.json() as Promise<Site[]>)])
+      .then(async ([, list]) => {
         // Terrain horizons are optional per site; a missing file means a smooth-sphere horizon.
         const withHorizons = await Promise.all(
-          list.map(async (bare) => {
-            // The block of terrain around the site, for the landscape view.
-            const s = { ...bare, terrain: terrain.get(bare.id) }
+          list.map(async (s) => {
             try {
               const r = await fetch(`${base}/horizons/${s.id}.json`)
               if (!r.ok || !r.headers.get('content-type')?.includes('json')) return s
@@ -94,6 +91,8 @@ export default function App() {
           }),
         )
         setCatalog(withHorizons)
+        // The terrain blocks for the landscape view are a few megabytes; fetch them after the page is up.
+        void loadTerrain().then((terrain) => setCatalog((c) => c.map((s) => ({ ...s, terrain: terrain.get(s.id) }))))
         const has = (id?: string) => withHorizons.some((s) => s.id === id)
         setSiteId(
           INITIAL.custom
@@ -192,6 +191,7 @@ export default function App() {
         .filter((s, i, a) => a.findIndex((x) => x.key === s.key) === i)
         .slice(-6),
     )
+  const terrainRange = site.terrain ? heightRange(site.terrain.heights) : null
   // The landscape view needs a block of terrain; without one, fall back to the Moon.
   const view3d: GlobeView = globeView === 'terrain' && !site.terrain ? 'site' : globeView
   const tourActions: TourActions = {
@@ -348,7 +348,15 @@ export default function App() {
               </div>
             }
           >
-            <Globe sites={sites} site={site} now={now} view={view3d} onSelect={setSiteId} onPick={pickPoint} />
+            <Globe
+              sites={sites}
+              site={site}
+              now={now}
+              view={view3d}
+              onSelect={setSiteId}
+              onPick={pickPoint}
+              terrainColours={terrainColours}
+            />
           </Suspense>
           <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-4">
             <div>
@@ -381,12 +389,50 @@ export default function App() {
             </div>
           </div>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-3 p-4">
-            {view3d !== 'system' && (
-              <TerrainCard site={site} inLandscape={view3d === 'terrain'} onLandscape={() => setGlobeView('terrain')} />
-            )}
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              {view3d === 'terrain' && terrainRange ? (
+                <div className="pointer-events-auto rounded-lg border border-line bg-black/70 p-3 text-xs backdrop-blur-sm">
+                  <div className="flex gap-1" role="group" aria-label="How the landscape is coloured">
+                    <button
+                      className={`btn min-h-7! px-2! text-xs! ${terrainColours ? 'btn-primary' : ''}`}
+                      aria-pressed={terrainColours}
+                      onClick={() => setTerrainColours(true)}
+                    >
+                      Height colours
+                    </button>
+                    <button
+                      className={`btn min-h-7! px-2! text-xs! ${terrainColours ? '' : 'btn-primary'}`}
+                      aria-pressed={!terrainColours}
+                      onClick={() => setTerrainColours(false)}
+                    >
+                      Real sunlight
+                    </button>
+                  </div>
+                  {terrainColours ? (
+                    <div className="mt-2.5 w-56">
+                      <div className="h-2.5 rounded-full" style={{ background: HEIGHT_GRADIENT }} />
+                      <div className="num mt-1 flex justify-between text-muted">
+                        <span>{Math.round(terrainRange[0]).toLocaleString('en-GB')} m</span>
+                        <span>height</span>
+                        <span>{Math.round(terrainRange[1]).toLocaleString('en-GB')} m</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 w-56 text-muted">Lit by the Sun where it really is at this moment.</p>
+                  )}
+                </div>
+              ) : (
+                <span />
+              )}
+              {view3d !== 'system' && (
+                <TerrainCard site={site} inLandscape={view3d === 'terrain'} onLandscape={() => setGlobeView('terrain')} />
+              )}
+            </div>
           <p className="text-xs text-muted">
             {view3d === 'terrain'
-              ? 'Drag to look around. The terrain is at true vertical scale and the Sun shines from its real direction for this moment. Shadows come only from ground inside this block, and the lander marker is enlarged.'
+              ? terrainColours
+                ? 'Drag to look around. Colours show height; the lighting is an even map light, not the Sun. The terrain is at true vertical scale, the pointers show where the Sun and Earth really are, and the lander marker is enlarged.'
+                : 'Drag to look around. The terrain is at true vertical scale and the Sun shines from its real direction for this moment. Shadows come only from ground inside this block, and the lander marker is enlarged.'
               : "Drag to turn the Moon. Double-click the surface to place a custom point. Directions are true; sizes and distances are not. Earth is really 3.7 times the Moon's width and the Sun 109 times Earth's."}
             {site.source_url && (
               <>
