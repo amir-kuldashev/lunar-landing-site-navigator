@@ -163,16 +163,16 @@ export default function App() {
   }
 
   return (
-    <main className="mx-auto flex min-h-full max-w-[1500px] flex-col gap-4 px-4 pb-10 pt-4 sm:px-6">
-      <header className="enter flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+    <main className="mx-auto flex min-h-full max-w-[1500px] flex-col gap-4 px-4 pb-10 sm:px-6">
+      <header className="enter-fade z-30 -mx-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-line bg-black/85 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 md:sticky md:top-0 md:items-center md:py-2.5">
         <div>
-          <h1 className="display text-xl sm:text-2xl">Lunar Landing Site Navigator</h1>
-          <p className="mt-0.5 text-sm text-muted">Sunlight and Earth contact at any landing site, on any date.</p>
+          <h1 className="display text-xl sm:text-2xl md:text-xl">Lunar Landing Site Navigator</h1>
+          <p className="mt-0.5 text-sm text-muted md:hidden">Sunlight and Earth contact at any landing site, on any date.</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-xs text-muted">
             Landing site
-            <select className="field min-w-56" value={site.id} onChange={(e) => setSiteId(e.target.value)}>
+            <select className="field w-52" value={site.id} onChange={(e) => setSiteId(e.target.value)}>
               {CATEGORIES.map((c) => (
                 <optgroup key={c} label={c}>
                   {catalog
@@ -241,7 +241,20 @@ export default function App() {
               }}
             />
           </label>
-          <button className="btn btn-primary" onClick={pin}>
+          <label className="flex flex-col gap-1 text-xs text-muted">
+            Speed
+            <select className="field" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
+              {SPEEDS.map((s, i) => (
+                <option key={s.label} value={i}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="btn btn-primary min-w-24" onClick={() => setPlaying((p) => !p)} aria-pressed={playing}>
+            {playing ? 'Pause' : 'Start'}
+          </button>
+          <button className="btn" onClick={pin}>
             Pin this scenario
           </button>
           <button
@@ -360,27 +373,12 @@ export default function App() {
             <button className="btn" onClick={() => changeTime(t - HOUR)} aria-label="Back one hour">
               −1 h
             </button>
-            <button className="btn btn-primary min-w-20" onClick={() => setPlaying((p) => !p)} aria-pressed={playing}>
-              {playing ? 'Pause' : 'Play'}
-            </button>
             <button className="btn" onClick={() => changeTime(t + HOUR)} aria-label="Forward one hour">
               +1 h
             </button>
             <button className="btn" onClick={() => changeTime(t + DAY)} aria-label="Forward one day">
               +1 day
             </button>
-            <select
-              className="field"
-              value={speed}
-              onChange={(e) => setSpeed(Number(e.target.value))}
-              aria-label="Playback speed"
-            >
-              {SPEEDS.map((s, i) => (
-                <option key={s.label} value={i}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
         <div className="mt-3 h-[220px]">

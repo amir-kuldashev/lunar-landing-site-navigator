@@ -53,7 +53,7 @@ specialists, and comparing several site and date options with them is slow.
 
 *What it does.*
 - Pick a site from a list, type coordinates, or double-click a point on a 3D Moon.
-- Pick a date and time, or press Play to watch a lunar day unfold.
+- Pick a date and time, or press Start to watch a lunar day unfold.
 - Read the answer in plain words, with the numbers behind it: Sun and Earth elevation, whether there is
   sunlight and a direct Earth link, and a countdown to the next sunset or Earthset.
 - See the sky from the site with the terrain skyline drawn in, and the paths the Sun and Earth follow.
