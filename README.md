@@ -31,6 +31,8 @@ docs/       plan, slides, demo script
 
 ## Data sources
 
+Full list of all data, references and open-source dependencies with licences: [docs/RESOURCES.md](docs/RESOURCES.md).
+
 - JPL Horizons (validation of Sun/Earth positions): https://ssd.jpl.nasa.gov/horizons/
 - NAIF SPICE generic kernels (ephemeris): https://naif.jpl.nasa.gov/pub/naif/generic_kernels/
 - LOLA south pole DEMs, NASA GSFC PGDA (terrain horizons): https://pgda.gsfc.nasa.gov/
