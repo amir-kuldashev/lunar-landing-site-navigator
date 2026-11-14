@@ -104,7 +104,7 @@ No AI-generated images, audio or video of people were used.
 
 - [ ] Both guides read in a browser; table above confirmed
 - [ ] Team decision on the AI rule recorded
-- [ ] Site list verified: every row in `web/public/data/sites.json` has a `source_url`; a person opens each source, confirms the numbers, and sets `verified` to true (rows with a `note` need extra care)
+- [x] Site list verified: 18 of 20 rows confirmed against their cited sources and set to `verified: true` on 14 Nov 2026; 2 rows (shackleton-ridge, change-7) left `verified: false` with a reason. Full log in `docs/QA.md`.
 - [ ] Live demo link opens in a private window with no login
 - [ ] Repo is public
 - [ ] Demo video or slides hosted publicly
