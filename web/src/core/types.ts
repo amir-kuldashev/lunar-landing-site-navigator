@@ -26,6 +26,14 @@ export interface Site {
   category?: string
   mission?: string
   source_url?: string
+  /** Landing date (UTC, ISO) for missions that have landed. */
+  date?: string
+  /** landed, planned, candidate, or feature. */
+  kind?: string
+  /** Caveat about the coordinates, shown next to the source link. */
+  note?: string
+  /** True once a person has checked the coordinates against the source. */
+  verified?: boolean
   /** Terrain horizon if one has been computed; otherwise a smooth-sphere horizon is used. */
   horizon?: HorizonProfile
 }

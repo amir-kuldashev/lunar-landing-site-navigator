@@ -106,10 +106,10 @@ export default function Readouts({
   const earthLine = earth.on
     ? earth.at
       ? `Earth is in view for another ${duration(earth.at - now.t)}, so the lander can talk to Earth directly.`
-      : 'Earth stays in view, so the lander can always talk to Earth directly.'
+      : 'Earth stays in view for at least two months, so the lander can talk to Earth directly.'
     : earth.at
       ? `Earth is hidden for another ${duration(earth.at - now.t)}; until then the lander needs a relay satellite.`
-      : 'Earth never comes into view from here, so the lander always needs a relay satellite.'
+      : 'Earth does not come into view in the next two months, so the lander needs a relay satellite.'
 
   return (
     <div className="flex flex-col gap-3">
@@ -135,7 +135,7 @@ export default function Readouts({
         status={now.earth.visible ? 'Direct link available' : 'No direct link'}
         good={now.earth.visible}
         countdownLabel={earth.on ? 'until Earthset' : 'until Earthrise'}
-        countdown={earth.at ? duration(earth.at - now.t) : earth.on ? 'Does not set' : 'Does not rise'}
+        countdown={earth.at ? duration(earth.at - now.t) : beyond}
         extra={
           now.earth.visible
             ? `Earth sits ${deg(now.earth.el - now.earth.horizonEl, 1)} above the skyline in that direction.`

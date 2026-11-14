@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { events, getEphemeris, loadEphemeris, summary, topo, type HorizonProfile, type Site } from './core'
 import { DAY, HOUR, dateUTC, fromInputValue, latLon, timeUTC, toInputValue } from './lib/format'
+import { buildUrl, readUrlState } from './lib/urlState'
 import Compare, { type Scenario } from './views/Compare'
 import Panorama from './views/Panorama'
 import Readouts from './views/Readouts'
@@ -21,13 +22,17 @@ const SPEEDS = [
 const startOfDay = (t: number) => Math.floor(t / DAY) * DAY
 
 const CUSTOM: Site = { id: 'custom', name: 'Custom point', lat: -85, lon: 30, alt_m: 0 }
+const CATEGORIES = ['South pole', 'CLPS', 'International', 'Apollo']
+// Read once: the link someone opened decides the first view.
+const INITIAL = readUrlState()
 
 export default function App() {
   const [catalog, setCatalog] = useState<Site[]>([])
-  const [custom, setCustom] = useState<Site>(CUSTOM)
+  const [custom, setCustom] = useState<Site>(() => (INITIAL.custom ? { ...CUSTOM, ...INITIAL.custom } : CUSTOM))
   const [siteId, setSiteId] = useState('')
-  const [t, setT] = useState(() => Date.UTC(2027, 0, 1))
-  const [windowStart, setWindowStart] = useState(() => Date.UTC(2027, 0, 1))
+  const [t, setT] = useState(() => INITIAL.t ?? Date.UTC(2027, 0, 1))
+  const [windowStart, setWindowStart] = useState(() => startOfDay(INITIAL.t ?? Date.UTC(2027, 0, 1)))
+  const [copied, setCopied] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [pinned, setPinned] = useState<Scenario[]>([])
@@ -51,7 +56,22 @@ export default function App() {
           }),
         )
         setCatalog(withHorizons)
-        setSiteId(withHorizons.find((s) => s.id === 'shackleton-ridge')?.id ?? withHorizons[0]?.id ?? 'custom')
+        const has = (id?: string) => withHorizons.some((s) => s.id === id)
+        setSiteId(
+          INITIAL.custom
+            ? 'custom'
+            : has(INITIAL.siteId)
+              ? INITIAL.siteId!
+              : has('shackleton-ridge')
+                ? 'shackleton-ridge'
+                : (withHorizons[0]?.id ?? 'custom'),
+        )
+        setPinned(
+          INITIAL.pins.flatMap((p) => {
+            const site = p.custom ? { ...CUSTOM, ...p.custom } : withHorizons.find((s) => s.id === p.siteId)
+            return site ? [{ key: `${site.id}-${site.lat}-${site.lon}-${p.t}`, site, t: p.t }] : []
+          }),
+        )
         setReady(true)
       })
       .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : String(e)))
@@ -85,6 +105,14 @@ export default function App() {
 
   const sites = useMemo(() => [...catalog, custom], [catalog, custom])
   const site = sites.find((s) => s.id === siteId) ?? custom
+
+  // Keep the address bar in step with the view, so the page can be shared or reloaded as it is.
+  // Skipped during playback: rewriting the URL sixty times a second helps nobody.
+  useEffect(() => {
+    if (!ready || playing) return
+    const id = window.setTimeout(() => window.history.replaceState(null, '', buildUrl(site, t, pinned)), 300)
+    return () => window.clearTimeout(id)
+  }, [ready, playing, site, t, pinned])
 
   const windowData = useMemo(() => {
     if (!ready) return null
@@ -139,11 +167,24 @@ export default function App() {
           <label className="flex flex-col gap-1 text-xs text-muted">
             Landing site
             <select className="field min-w-56" value={site.id} onChange={(e) => setSiteId(e.target.value)}>
-              {catalog.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
+              {CATEGORIES.map((c) => (
+                <optgroup key={c} label={c}>
+                  {catalog
+                    .filter((s) => s.category === c)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                </optgroup>
               ))}
+              {catalog
+                .filter((s) => !CATEGORIES.includes(s.category ?? ''))
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
               <option value="custom">Custom point…</option>
             </select>
           </label>
@@ -197,6 +238,22 @@ export default function App() {
           <button className="btn btn-primary" onClick={pin}>
             Pin this scenario
           </button>
+          <button
+            className="btn"
+            onClick={() => {
+              const url = buildUrl(site, t, pinned)
+              window.history.replaceState(null, '', url)
+              navigator.clipboard?.writeText(url).then(
+                () => {
+                  setCopied(true)
+                  window.setTimeout(() => setCopied(false), 2000)
+                },
+                () => undefined,
+              )
+            }}
+          >
+            {copied ? 'Link copied' : 'Copy link'}
+          </button>
         </div>
       </header>
 
@@ -228,6 +285,20 @@ export default function App() {
           </div>
           <p className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-xs text-muted">
             Drag to turn the Moon. Double-click the surface to place a custom point.
+            {site.source_url && (
+              <>
+                {' '}
+                <a
+                  className="pointer-events-auto underline hover:text-ink"
+                  href={site.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Source for this site's coordinates
+                </a>
+                {site.note ? `. ${site.note}` : ''}
+              </>
+            )}
           </p>
         </section>
 
