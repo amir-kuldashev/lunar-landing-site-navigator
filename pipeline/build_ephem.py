@@ -59,8 +59,9 @@ def main() -> None:
     for k in fetch_kernels():
         sp.furnsh(str(k))
 
-    et0 = sp.str2et(T0_UTC.replace("Z", " UTC").replace("T", " "))
-    et1 = sp.str2et(T1_UTC.replace("Z", " UTC").replace("T", " "))
+    # SPICE reads ISO strings as UTC by default.
+    et0 = sp.str2et(T0_UTC.rstrip("Z"))
+    et1 = sp.str2et(T1_UTC.rstrip("Z"))
     n = int(round((et1 - et0) / STEP_S)) + 1
     out = np.empty((n, 6), dtype="<f4")
     for i in range(n):

@@ -35,7 +35,8 @@ SITES = [
     ("mid-south", 32.3, -69.4, 0.0),
 ]
 BODIES = {"sun": "10", "earth": "399"}
-START, STOP, STEP = "2026-12-01", "2027-12-01", "13 d"
+# Odd start minute and a step in minutes, so samples fall between the hourly ephemeris nodes and test interpolation too.
+START, STOP, STEP = "2026-12-01 00:17", "2027-12-01", "9973 m"
 
 MONTHS = {m: i + 1 for i, m in enumerate("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split())}
 

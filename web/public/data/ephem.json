@@ -1,0 +1,7 @@
+{
+  "t0_utc": "2024-01-01T00:00:00Z",
+  "step_s": 3600,
+  "n": 140257,
+  "frame": "MOON_ME",
+  "source": "NAIF SPICE: naif0012.tls, pck00011.tpc, moon_pa_de440_200625.bpc, moon_de440_250416.tf, de440s.bsp"
+}

@@ -83,7 +83,7 @@ describe.skipIf(!haveData)('topo() against JPL Horizons', () => {
         n++
       }
     }
-    console.log(`Horizons check: ${n} rows, worst az error ${worstAz.toFixed(4)} deg, worst el error ${worstEl.toFixed(4)} deg`)
+    console.log(`Horizons check: ${n} rows, worst az error ${worstAz.toFixed(5)} deg, worst el error ${worstEl.toFixed(5)} deg`)
     expect(n).toBeGreaterThan(100)
     expect(worstEl).toBeLessThan(0.05)
     expect(worstAz).toBeLessThan(0.05)
