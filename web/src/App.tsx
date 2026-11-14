@@ -296,6 +296,7 @@ export default function App() {
                 >
                   Source for this site's coordinates
                 </a>
+                {site.verified === false ? '. Coordinates not yet verified' : ''}
                 {site.note ? `. ${site.note}` : ''}
               </>
             )}
