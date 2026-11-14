@@ -12,7 +12,7 @@ browser. Values below are from the live guide, not last year's.
 
 | Rule | Confirmed 2026 wording | OK |
 |---|---|---|
-| Submission window | Opens Sat 14 Nov 9:00 a.m., closes Sun 15 Nov 11:59 p.m., in the time zone of the team's Local Event (Universal Event: Team Owner's residence) | ✅ |
+| Submission window | Opens Sat 14 Nov 9:00 a.m., closes Sun 15 Nov 11:59 p.m., in the time zone of the team's Local Event (Universal Event: Team Owner's residence). **Our team's deadline is Sunday 15 Nov, 12:00**, as given by the team lead on 14 Nov; work to that. | ✅ |
 | Demo | Required. Video 30 seconds or less, OR slide deck up to 7 slides including title and intro slides | ✅ |
 | Hosting | Demo and final-project links hosted externally (YouTube, Drive, GitHub, etc.); must open with no password, permission or registration | ✅ |
 | Page images | JPG/PNG/GIF up to 10 MB can be uploaded to the project page; videos and documents cannot — link them externally | ✅ |
@@ -121,4 +121,4 @@ No AI-generated images, audio or video of people were used.
 - [x] Repo is public
 - [ ] Demo video or slides hosted publicly
 - [ ] Every teammate added to the team on the Space Apps site
-- [ ] Submitted with at least two hours to spare
+- [ ] Submitted well before Sunday 12:00

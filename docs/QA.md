@@ -27,7 +27,7 @@ only the `verified` flag was set. 18 of 20 confirmed, 2 left unverified with a r
 | de-gerlache | -88.5 | -87.1 | Wikipedia (crater centre) | ✅ feature centre |
 | mons-mouton | -84.6 | 31.0 | Wikipedia (feature) | ✅ feature |
 | malapert | -84.9 | 12.9 | Wikipedia (crater centre) | ✅ feature centre |
-| shackleton-ridge | -89.45 | 222.69 | LROC illumination study | ☐ longitude disputed (222.69 vs 229.69), left unverified |
+| shackleton-ridge | -89.45 | 222.69 | LROC illumination study | ☐ not checked against the paper; our LOLA data supports 222.69 (see note below) |
 | change-7 | -88.8 | 123.4 | Wikipedia infobox (social-media cite) | ☐ weak source, left unverified |
 
 Notes
@@ -57,4 +57,8 @@ Run on 2026-11-14: `vitest run` → 3 test files, 13 tests, all passed.
       longitude, quantity 4 = az/el) and confirm the app's displayed numbers match within a few hundredths of a
       degree. The automated fixture test already covers this for ten points; this is a human sanity check for
       the demo.
-- [ ] Resolve the shackleton-ridge longitude (222.69 vs 229.69) if that site is used in the demo.
+- [ ] Confirm the shackleton-ridge longitude against Mazarico et al. (2011). Checked on 14 Nov against our own
+      LOLA elevation data: at 89.45 S, 222.69 E the ground is the ridge crest (1,954 m, skyline at or below 0.2
+      degrees, open sky in 92% of directions); at 229.69 E it is 500 m lower on a slope with a 19 degree wall
+      beside it. 222.69 E is therefore the well-lit point and 229.69 E looks like a misprint. This is evidence
+      from the terrain, not confirmation from the source, so the site stays marked unverified.
