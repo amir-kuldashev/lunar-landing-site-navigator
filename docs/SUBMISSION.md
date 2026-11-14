@@ -2,28 +2,31 @@
 
 Everything needed to fill in the Space Apps project page. Owner: Person E.
 
-## Rules to check first
+## Rules (confirmed against the 2026 guide)
 
-These come from a web search of the official pages on 14 Nov 2026. The Space Apps site could not be opened
-directly from the dev machine (certificate error), and the submission-guide text the search found may be last
-year's version. **Someone must open the two guides in a browser and confirm every line below.**
+Confirmed on 14 Nov 2026 by reading the official 2026 Project Submission Guide (dated 13 Nov 2026) directly in a
+browser. Values below are from the live guide, not last year's.
 
 - Guide: https://www.spaceappschallenge.org/resources/project-submission-guide/
 - Judging: https://www.spaceappschallenge.org/resources/judging-awards-guide
 
-| Rule | What the search found | Confirmed in the 2026 guide? |
+| Rule | Confirmed 2026 wording | OK |
 |---|---|---|
-| Deadline | Submissions close Sunday 15 Nov, 11:59 PM local time | ☐ |
-| Demo | Required. A video of 30 seconds or less, or a slide deck of up to 7 slides including title and intro | ☐ |
-| Hosting | Demo and project links are hosted elsewhere and must open with no login, permission or registration | ☐ |
-| Language | English on the project page and in all linked material | ☐ |
-| People | No images or likenesses of anyone under 18 | ☐ |
-| AI tools | Allowed, and the submission must describe how they were used. The guide text says AI should not be used to come up with the idea for how to solve the challenge | ☐ |
-| Judging | Impact, Creativity, Validity, Relevance, Presentation | ☐ |
+| Submission window | Opens Sat 14 Nov 9:00 a.m., closes Sun 15 Nov 11:59 p.m., in the time zone of the team's Local Event (Universal Event: Team Owner's residence) | ✅ |
+| Demo | Required. Video 30 seconds or less, OR slide deck up to 7 slides including title and intro slides | ✅ |
+| Hosting | Demo and final-project links hosted externally (YouTube, Drive, GitHub, etc.); must open with no password, permission or registration | ✅ |
+| Page images | JPG/PNG/GIF up to 10 MB can be uploaded to the project page; videos and documents cannot — link them externally | ✅ |
+| Language | English on the project page and all linked material. A video may be in another language only with English subtitles; slide decks must be English | ✅ |
+| Super Intelligence (SI) | Allowed and must be disclosed. SI must not be used to come up with the idea of how to solve the challenge. SI-generated images/videos need a **visible watermark**; audio/code/data need acknowledgment in descriptive text and metadata. No NASA branding in generated content. The SI answer is data-collection only (judges do not see it), but judges do see SI indicators inside the project. | ⚠️ action |
+| NASA data | Must use at least one NASA data set or resource to be eligible for a Global Award | ✅ (SPICE DE440, LOLA, Horizons, SVS Moon Kit) |
+| Judging | Impact, Creativity, Validity, Relevance, Presentation | ✅ |
+| Website access | Optional but recommended: request a FortiGuard Web Filter Classification for the live-demo site so judges are not blocked | ☐ |
 
-**The AI rule needs a team decision before submitting.** AI tools were used heavily on this project, including
-for the development plan. Read the exact 2026 wording, then describe the use truthfully (draft below). Do not
-understate it.
+**SI/AI disclosure — action before submit.** AI assistants were used heavily (including to draft the dev plan),
+which is allowed. Two concrete to-dos from the 2026 wording: (1) the SI question in the form must be answered
+truthfully (it is data-collection only, judges do not see it); (2) any SI-generated media shown in the demo
+needs a visible watermark, and SI-written code/data needs a note in descriptive text/metadata — our code is
+AI-assisted, so add that acknowledgment line. Draft disclosure is below.
 
 ## Links to submit
 
@@ -101,7 +104,7 @@ No AI-generated images, audio or video of people were used.
 
 - [ ] Both guides read in a browser; table above confirmed
 - [ ] Team decision on the AI rule recorded
-- [ ] Site list verified: every row in `web/public/data/sites.json` has a `source_url`; a person opens each source, confirms the numbers, and sets `verified` to true (rows with a `note` need extra care)
+- [x] Site list verified: 18 of 20 rows confirmed against their cited sources and set to `verified: true` on 14 Nov 2026; 2 rows (shackleton-ridge, change-7) left `verified: false` with a reason. Full log in `docs/QA.md`.
 - [ ] Live demo link opens in a private window with no login
 - [ ] Repo is public
 - [ ] Demo video or slides hosted publicly
