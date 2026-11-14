@@ -36,13 +36,16 @@ export default function Panorama({ site, now, windowStart, days }: Props) {
     }
     const skyline: [number, number][] = []
     let maxSky = -90
+    let minSky = 90
     for (let az = 0; az <= 360; az += 1) {
       const el = horizonElevation(site.horizon, az)
       skyline.push([az, el])
       maxSky = Math.max(maxSky, el)
+      minSky = Math.min(minSky, el)
     }
     const top = Math.min(90, Math.max(6, Math.ceil(Math.max(maxEl, maxSky) * 1.15 + 1)))
-    const bottom = -Math.max(3, Math.round(top * 0.22))
+    // Leave room under the lowest point of the skyline (a ridge-top site looks down on its horizon).
+    const bottom = Math.min(-Math.max(3, Math.round(top * 0.22)), Math.floor(minSky - 1.5))
     // Centre the view on Earth so its small libration loop never straddles the edge.
     const centre = Math.round(topo(site, windowStart).earth.az / 45) * 45
     return { track, skyline, top, bottom, centre }

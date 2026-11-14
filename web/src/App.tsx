@@ -4,6 +4,7 @@ import { DAY, HOUR, dateUTC, fromInputValue, latLon, timeUTC, toInputValue } fro
 import Compare, { type Scenario } from './views/Compare'
 import Panorama from './views/Panorama'
 import Readouts from './views/Readouts'
+import ScheduleSlip from './views/ScheduleSlip'
 import Timeline from './views/Timeline'
 
 // three.js is the heaviest part of the page; load it after the instruments are on screen.
@@ -293,6 +294,20 @@ export default function App() {
             }}
           />
         </div>
+      </section>
+
+      <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '240ms' }}>
+        <h2 className="mb-3 text-sm font-medium">If the landing date slips</h2>
+        <ScheduleSlip
+          key={`${site.id}:${site.lat}:${site.lon}`}
+          site={site}
+          t={t}
+          days={WINDOW_DAYS}
+          onChange={(next) => {
+            setPlaying(false)
+            changeTime(next)
+          }}
+        />
       </section>
 
       <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '280ms' }}>

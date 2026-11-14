@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import type { Events, Interval } from '../core'
 import { DAY, dateShortUTC } from '../lib/format'
+import { intersectIntervals } from './intervals'
 
 /** 30-day ribbon of sunlight and Earth visibility. Drag anywhere on it to move through time. */
 
@@ -10,17 +11,6 @@ interface Props {
   days: number
   t: number
   onChange: (t: number) => void
-}
-
-function both(a: Interval[], b: Interval[]): Interval[] {
-  const out: Interval[] = []
-  for (const p of a)
-    for (const q of b) {
-      const start = Math.max(p.start, q.start)
-      const end = Math.min(p.end, q.end)
-      if (end > start) out.push({ start, end, openStart: false, openEnd: false })
-    }
-  return out
 }
 
 export default function Timeline({ events, windowStart, days, t, onChange }: Props) {
@@ -51,7 +41,7 @@ export default function Timeline({ events, windowStart, days, t, onChange }: Pro
   const rows: { label: string; list: Interval[]; color: string }[] = [
     { label: 'Sunlight', list: events.sunlight, color: 'var(--color-sun)' },
     { label: 'Earth in view', list: events.dte, color: 'var(--color-earth)' },
-    { label: 'Both', list: both(events.sunlight, events.dte), color: 'var(--color-ink)' },
+    { label: 'Both', list: intersectIntervals(events.sunlight, events.dte), color: 'var(--color-ink)' },
   ]
   const ticks = Array.from({ length: Math.floor(days / 5) + 1 }, (_, i) => windowStart + i * 5 * DAY)
 
