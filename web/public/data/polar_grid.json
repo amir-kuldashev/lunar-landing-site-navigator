@@ -1,0 +1,18 @@
+{
+  "n": 8857,
+  "az_n": 180,
+  "spacing_km": 4.0,
+  "lat_max": -83.0,
+  "mast_m": 2.0,
+  "offsets": {
+    "lat": 0,
+    "lon": 35428,
+    "height_m": 70856,
+    "slope": 88570,
+    "skyline": 97427
+  },
+  "slope_unit_deg": 0.5,
+  "skyline_unit_deg": 0.1,
+  "slope_baseline_m": 160.0,
+  "source": "LOLA GDR (LDEM_80S_80M, LDEM_75S_240M, LDEM_16)"
+}

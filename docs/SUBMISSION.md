@@ -60,6 +60,9 @@ specialists, and comparing several site and date options with them is slow.
 - Scan a 30-day ribbon of sunlight, Earth contact, and both together.
 - Slide the landing date earlier or later and see what gets better or worse.
 - Pin several site and date scenarios and compare them in one table.
+- Ask which site is best for a date: the tool ranks the named sites, or scores the whole south polar region
+  cell by cell on a map, using each cell's own terrain skyline and leaving out steep ground.
+- See a whole year at one site at a glance, and share any view as a link.
 
 *How it works.*
 Sun and Earth positions are precomputed from NASA's SPICE ephemeris (DE440) in the Moon's body-fixed frame for

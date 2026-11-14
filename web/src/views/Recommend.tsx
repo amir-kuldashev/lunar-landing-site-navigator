@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { summary, topo, type Site } from '../core'
+import { summary, topo, type HorizonProfile, type Site } from '../core'
 import { HOUR, dateUTC, duration } from '../lib/format'
+import PolarMap from './PolarMap'
 
 /**
  * "Where should we land on this date?" Scores every site in the catalog for a mission starting at the
@@ -10,8 +11,10 @@ import { HOUR, dateUTC, duration } from '../lib/format'
 interface Props {
   sites: Site[]
   t: number
-  currentId: string
+  current: Site
   onOpen: (id: string) => void
+  /** Open an arbitrary point (from the south-pole map) with its own terrain skyline. */
+  onPickPoint: (lat: number, lon: number, horizon: HorizonProfile) => void
 }
 
 type Priority = 'balanced' | 'power' | 'comms'
@@ -37,7 +40,12 @@ interface Row {
   earthAtArrival: boolean
 }
 
-export default function Recommend({ sites, t, currentId, onOpen }: Props) {
+export default function Recommend({ sites, t, current, onOpen, onPickPoint }: Props) {
+  const currentId = current.id
+  // ?rank=map opens straight on the south-pole map, so a link can point at it.
+  const [view, setView] = useState<'list' | 'map'>(() =>
+    new URLSearchParams(window.location.search).get('rank') === 'map' ? 'map' : 'list',
+  )
   const [priority, setPriority] = useState<Priority>('balanced')
   const [days, setDays] = useState(14)
   const [polarOnly, setPolarOnly] = useState(false)
@@ -79,6 +87,14 @@ export default function Recommend({ sites, t, currentId, onOpen }: Props) {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
+        <div className="flex items-center gap-1.5" role="group" aria-label="What to rank">
+          <button className={toggle(view === 'list')} aria-pressed={view === 'list'} onClick={() => setView('list')}>
+            Named sites
+          </button>
+          <button className={toggle(view === 'map')} aria-pressed={view === 'map'} onClick={() => setView('map')}>
+            Whole south pole
+          </button>
+        </div>
         <div className="flex items-center gap-1.5" role="group" aria-label="Mission length">
           <span>Mission length</span>
           {LENGTHS.map((l) => (
@@ -95,12 +111,32 @@ export default function Recommend({ sites, t, currentId, onOpen }: Props) {
             </button>
           ))}
         </div>
-        <label className="flex cursor-pointer items-center gap-2">
-          <input type="checkbox" className="accent-(--color-ink)" checked={polarOnly} onChange={(e) => setPolarOnly(e.target.checked)} />
-          South pole sites only
-        </label>
+        {view === 'list' && (
+          <label className="flex cursor-pointer items-center gap-2">
+            <input type="checkbox" className="accent-(--color-ink)" checked={polarOnly} onChange={(e) => setPolarOnly(e.target.checked)} />
+            South pole sites only
+          </label>
+        )}
       </div>
 
+      {view === 'map' && (
+        <>
+          <PolarMap
+            sites={sites}
+            t={t}
+            days={days}
+            weights={PRIORITIES.find((p) => p.id === priority)!.weights}
+            current={current}
+            onPick={onPickPoint}
+          />
+          <p className="mt-3 max-w-3xl text-xs leading-relaxed text-muted">
+            Score out of 100: {PRIORITIES.find((p) => p.id === priority)!.blurb}, over the mission length.
+          </p>
+        </>
+      )}
+
+      {view === 'list' && (
+        <>
       {best ? (
         <p className="mt-4 text-sm leading-relaxed">
           For a {days}-day mission landing on <span className="num">{dateUTC(tHour)}</span>, the best site in this list is{' '}
@@ -175,6 +211,8 @@ export default function Recommend({ sites, t, currentId, onOpen }: Props) {
           </button>
         )}
       </div>
+        </>
+      )}
     </div>
   )
 }

@@ -144,8 +144,9 @@ export default function App() {
 
   const range = getEphemeris().range
   const outOfRange = t < range[0] || t > range[1]
-  const pickPoint = (lat: number, lon: number) => {
-    setCustom({ ...CUSTOM, lat: Number(lat.toFixed(3)), lon: Number(lon.toFixed(3)) })
+  // A point from the south-pole map brings its terrain skyline; a double-click on the globe does not.
+  const pickPoint = (lat: number, lon: number, horizon?: HorizonProfile) => {
+    setCustom({ ...CUSTOM, lat: Number(lat.toFixed(3)), lon: Number(lon.toFixed(3)), horizon })
     setSiteId('custom')
   }
   const pin = () =>
@@ -206,7 +207,7 @@ export default function App() {
                   value={custom.lat}
                   onChange={(e) => {
                     const v = Number(e.target.value)
-                    if (Number.isFinite(v)) setCustom({ ...custom, lat: Math.min(90, Math.max(-90, v)) })
+                    if (Number.isFinite(v)) setCustom({ ...custom, lat: Math.min(90, Math.max(-90, v)), horizon: undefined })
                   }}
                 />
               </label>
@@ -221,7 +222,7 @@ export default function App() {
                   value={custom.lon}
                   onChange={(e) => {
                     const v = Number(e.target.value)
-                    if (Number.isFinite(v)) setCustom({ ...custom, lon: Math.min(360, Math.max(-180, v)) })
+                    if (Number.isFinite(v)) setCustom({ ...custom, lon: Math.min(360, Math.max(-180, v)), horizon: undefined })
                   }}
                 />
               </label>
@@ -339,7 +340,7 @@ export default function App() {
 
       <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '160ms' }}>
         <h2 className="mb-3 text-sm font-medium">Best sites for this date</h2>
-        <Recommend sites={catalog} t={t} currentId={site.id} onOpen={setSiteId} />
+        <Recommend sites={catalog} t={t} current={site} onOpen={setSiteId} onPickPoint={pickPoint} />
       </section>
 
       <section className="enter rounded-xl border border-line bg-panel p-4" style={{ animationDelay: '200ms' }}>

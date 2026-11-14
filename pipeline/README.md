@@ -9,6 +9,7 @@ Python scripts that generate the data files in `web/public/data/`. Owner: Person
 | `fetch_horizons_fixtures.py` | `web/src/core/fixtures/horizons.json` | done |
 | `build_ephem.py` | `web/public/data/ephem.bin` + `ephem.json` | done |
 | `build_horizons.py` | `web/public/data/horizons/{id}.json` | done |
+| `build_polar_grid.py` | `web/public/data/polar_grid.bin` + `polar_grid.json` | done |
 
 Run each with `uv run pipeline/<script>.py` (Python 3.12 auto-provisioned by uv).
 
@@ -64,6 +65,17 @@ Limits: sites south of 80S use the 80 m polar model. Everywhere else uses the gl
 per pixel, so crater rims and hills smaller than a few km are not resolved there. Terrain features smaller
 than the model's pixel (boulders, small craters) are never resolved. Custom points in the app have no
 terrain skyline at all.
+
+### `web/public/data/polar_grid.bin`
+Terrain skylines and slopes for a regular grid over the south pole, so the app can score the whole region
+for a date. 8,857 cells, 4 km apart in polar stereographic projection, covering everything south of 83S.
+Per cell: latitude, longitude, terrain height, mean slope (160 m baseline on the 80 m model), and a skyline
+of 180 values (every 2 degrees of compass direction) stored in tenths of a degree. Layout and byte offsets
+are in `polar_grid.json`. About 1.7 MB; takes about 2 minutes to build.
+
+Limits: skyline values are stored to 0.1 degree and capped at 12.7 degrees (about 10% of values hit the
+cap, in deep craters where the Sun and Earth never get that high anyway). The slope is an average over a
+4 km cell and cannot see rocks or small craters.
 
 ### `web/src/core/fixtures/horizons.json`
 JPL Horizons API test fixtures: Sun and Earth az/el at 10 geometry test points, 53 times each over a year,
