@@ -23,6 +23,8 @@ interface Step {
   target: string[]
   /** Pixels to trim from the target's edges, so the light falls on exactly the thing being described. */
   inset?: { top?: number; right?: number; bottom?: number; left?: number }
+  /** Light a circle instead of a rectangle, for a round subject. */
+  round?: boolean
   title: string
   body: string
   setup: (a: TourActions) => void
@@ -79,6 +81,8 @@ const STEPS: Step[] = [
   },
   {
     target: [at('polar-map')],
+    // The map is a disc: light the disc, not the square it sits in.
+    round: true,
     title: 'So where is it good to land?',
     body: 'This map scores every 4 km of the south polar region for the chosen date, using the real terrain around each cell. Bright is good; dark grey is too steep. The numbered spots are the best areas. Try it: click any cell to open that point.',
     setup: (a) => {
@@ -349,7 +353,9 @@ export default function Tour({
   const r = layout?.target ?? null
   const arrow = layout ? arrowPath(layout, cardH, cardW) : null
   const spot = r
-    ? { left: r.left - PAD, top: r.top - PAD, width: r.width + 2 * PAD, height: r.height + 2 * PAD }
+    ? step.round
+      ? { left: r.left - 2, top: r.top - 2, width: r.width + 4, height: r.height + 4 }
+      : { left: r.left - PAD, top: r.top - PAD, width: r.width + 2 * PAD, height: r.height + 2 * PAD }
     : null
 
   const number = String(i + 1).padStart(2, '0')
@@ -360,9 +366,10 @@ export default function Tour({
       {spot ? (
         <div
           aria-hidden
-          className="pointer-events-none fixed z-40 rounded-2xl"
+          className="pointer-events-none fixed z-40"
           style={{
             ...spot,
+            borderRadius: step.round ? '9999px' : '16px',
             // A hairline, a soft halo, then the dark that covers the rest of the page.
             boxShadow: `0 0 0 1px rgba(160, 205, 245, ${0.9 * fade}), 0 0 28px 2px rgba(88, 166, 232, ${0.45 * fade}), 0 0 0 200vmax rgba(0, 0, 0, 0.72)`,
             transition: reduced ? 'none' : 'box-shadow 260ms var(--ease-smooth)',
