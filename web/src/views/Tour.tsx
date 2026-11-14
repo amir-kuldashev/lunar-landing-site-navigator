@@ -206,25 +206,35 @@ export default function Tour({
   const cardW = Math.min(CARD_W, (typeof window !== 'undefined' ? window.innerWidth : CARD_W) - 24)
 
   // While the tour is open the visitor cannot scroll the page: the tour moves it. Scrolling by hand
-  // pulled the lit area out from under the card. The page itself still responds to clicks.
+  // pulled the lit area out from under the card.
+  //
+  // This blocks the gestures that scroll (wheel, touch drag, scroll keys) rather than setting
+  // overflow: hidden on the page. Hiding overflow also stops the tour's own scrolling here, because
+  // the page's root elements are full-height: the document then has nowhere to scroll to.
+  // Blocking the default action does not stop the events themselves, so the 3D Moon can still be
+  // turned and zoomed, and the page still responds to clicks.
   useEffect(() => {
-    const html = document.documentElement
-    const body = document.body
-    const before = { html: html.style.overflow, body: body.style.overflow, pad: body.style.paddingRight }
-    // Hiding the scrollbar would widen the page and shift everything; keep its width as padding.
-    const bar = window.innerWidth - html.clientWidth
-    html.style.overflow = 'hidden'
-    body.style.overflow = 'hidden'
-    if (bar > 0) body.style.paddingRight = `${bar}px`
+    const stop = (e: Event) => e.preventDefault()
+    const keys = new Set([' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown'])
+    const stopKeys = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      // Leave typing and native controls alone (a select uses the arrow keys, a button uses space).
+      if (el && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(el.tagName)) return
+      if (keys.has(e.key)) e.preventDefault()
+    }
+    window.addEventListener('wheel', stop, { passive: false })
+    window.addEventListener('touchmove', stop, { passive: false })
+    window.addEventListener('keydown', stopKeys)
     return () => {
-      html.style.overflow = before.html
-      body.style.overflow = before.body
-      body.style.paddingRight = before.pad
+      window.removeEventListener('wheel', stop)
+      window.removeEventListener('touchmove', stop)
+      window.removeEventListener('keydown', stopKeys)
     }
   }, [])
 
-  // Each step, in order: set the scene, wait for the page to settle, jump to the area (no smooth
-  // scroll to chase), measure, and only then fade the spotlight, arrow and card in together.
+  // Each step, in order: the card fades out, the scene is set, the page glides to the area the step is
+  // about with the spotlight travelling along, and only when it has arrived do the card and pointer
+  // fade in. The card never moves while the page does, which is what used to make it jump about.
   useEffect(() => {
     setShown(false)
     step.setup(actions)
@@ -244,22 +254,51 @@ export default function Tour({
       setCardH(h)
       setLayout(place(rect, h))
     }
-    // The page can keep shifting for a moment after the jump (data arriving, sections resizing).
+    // The page can keep shifting for a moment after arriving (data loading, sections resizing).
     const follow = () => {
       measure()
       raf = requestAnimationFrame(follow)
     }
-    const settle = window.setTimeout(() => {
+    const arrive = () => {
       if (!alive) return
-      findTarget(step)?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' })
       measure()
-      raf = requestAnimationFrame(() => {
+      setShown(true)
+      next.current?.focus({ preventScroll: true })
+      follow()
+    }
+    /** Scroll position that puts the step's area in the middle of the window. */
+    const destination = () => {
+      const el = findTarget(step)
+      if (!el) return window.scrollY
+      const r = el.getBoundingClientRect()
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      return Math.max(0, Math.min(window.scrollY + r.top + r.height / 2 - window.innerHeight / 2, max))
+    }
+    const glide = () => {
+      if (!alive) return
+      const from = window.scrollY
+      const distance = Math.abs(destination() - from)
+      if (reduced || distance < 4) {
+        window.scrollTo(0, destination())
+        raf = requestAnimationFrame(arrive)
+        return
+      }
+      // Longer trips take longer, within limits, so near and far steps both feel unhurried.
+      const duration = Math.min(1100, Math.max(450, 320 + distance * 0.45))
+      const t0 = performance.now()
+      const ease = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
+      const frame = (now: number) => {
         if (!alive) return
-        setShown(true)
-        next.current?.focus({ preventScroll: true })
-        follow()
-      })
-    }, 180)
+        const p = Math.min(1, (now - t0) / duration)
+        // Re-aim every frame: the area can move while sections above it finish loading.
+        window.scrollTo(0, from + (destination() - from) * ease(p))
+        measure()
+        raf = p < 1 ? requestAnimationFrame(frame) : requestAnimationFrame(arrive)
+      }
+      raf = requestAnimationFrame(frame)
+    }
+    // Give the outgoing card time to fade and the page time to react to the new scene.
+    const settle = window.setTimeout(glide, 200)
     return () => {
       alive = false
       window.clearTimeout(settle)
