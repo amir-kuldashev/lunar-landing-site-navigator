@@ -48,6 +48,8 @@ cd web && npm install && npm test
 
 Expected: the Horizons comparison test passes with the largest az/el difference ~0.0001°.
 
+Run on 2026-11-14: `vitest run` → 3 test files, 13 tests, all passed.
+
 ## 3. Remaining manual QA (not machine-verifiable)
 
 - [ ] Spot-check 2-3 terrain horizon profiles against Moon Trek / Quickmap screenshots (visual).
