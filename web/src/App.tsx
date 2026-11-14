@@ -245,7 +245,7 @@ export default function App() {
           <h2 className="text-sm font-medium">
             Sky from the site
             <span className="ml-2 font-normal text-muted">
-              {site.horizon ? 'skyline from LOLA terrain' : 'smooth horizon, terrain not yet included'}
+              {site.horizon ? 'skyline from LOLA terrain, about 2 km resolution' : 'smooth horizon, no terrain data for this point'}
             </span>
           </h2>
           <div className="flex flex-wrap items-center gap-2">
