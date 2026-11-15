@@ -1,3 +1,4 @@
+import { useId, useState } from 'react'
 import type { Site } from '../core'
 import { compass } from '../lib/format'
 
@@ -28,6 +29,9 @@ export default function TerrainCard({
 }) {
   const t = site.terrain
   const h = site.horizon
+  // The card can be folded away to see the Moon or the landscape behind it; it stays folded as sites change.
+  const [open, setOpen] = useState(true)
+  const bodyId = useId()
 
   let skyline: string | null = null
   if (h && h.elev_deg.length > 0) {
@@ -52,7 +56,27 @@ export default function TerrainCard({
 
   return (
     <div className="pointer-events-auto max-w-[19rem] self-end rounded-lg border border-line bg-black/70 p-3 text-xs backdrop-blur-sm">
-      <h3 className="text-sm font-medium text-ink">The ground here</h3>
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-sm font-medium text-ink">The ground here</h3>
+        <button
+          className="btn min-h-6! gap-1! px-2! text-xs!"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? 'Hide' : 'Show'}
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 10 10"
+            aria-hidden
+            className={`transition-transform duration-(--dur-fast) motion-reduce:transition-none ${open ? '' : 'rotate-180'}`}
+          >
+            <path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+      <div id={bodyId} hidden={!open}>
       <dl className="mt-2 hidden grid-cols-[auto_1fr] gap-x-3 gap-y-1 sm:grid">
         {t && (
           <>
@@ -88,6 +112,7 @@ export default function TerrainCard({
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }
