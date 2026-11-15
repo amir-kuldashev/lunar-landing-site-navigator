@@ -22,11 +22,9 @@ browser. Values below are from the live guide, not last year's.
 | Judging | Impact, Creativity, Validity, Relevance, Presentation | ✅ |
 | Website access | Optional but recommended: request a FortiGuard Web Filter Classification for the live-demo site so judges are not blocked | ☐ |
 
-**SI/AI disclosure — agreed by the team on 15 Nov 2026.** AI coding assistants were used heavily throughout the
-project, including to draft the development plan from the human team's concept. This is fully disclosed below and
-in `docs/RESOURCES.md`. The copy-and-paste text for the official submission form's AI question is provided in
-Section 5 below. All code in this repository is acknowledged as AI-assisted. All numerical outputs are strictly
-verified against NASA JPL Horizons.
+**SI/AI disclosure.** AI coding assistants were used heavily throughout the project, including to draft the
+development plan and the first design of the tool. This is disclosed in "Use of AI tools" below, which also has
+the text for the submission form's AI question. All code in this repository is AI-assisted.
 
 ## Links to submit
 
@@ -94,50 +92,68 @@ Full list with URLs and citations: `pipeline/README.md`.
 - LROC Quickmap and NASA Moon Trek (site lookup and visual checks)
 - Software: TypeScript, React, Vite, three.js, react-three-fiber, Tailwind CSS, vitest; Python, numpy, spiceypy
 
-## Use of AI tools (agreed by the team on 15 Nov 2026)
+## Use of AI tools
 
-In strict accordance with the **NASA Space Apps Challenge 2026 Project Submission Guide** (Section: *Super Intelligence (SI) / AI Tools*):
+Fact-checked against the repository's commit history on 15 Nov 2026. Three people committed to this project,
+and all three used AI coding assistants. No other AI tools were used.
 
-### 1. Compliance with the "No AI for the Idea" Rule
-- **Origin of the Idea (Human Team):** The concept and core approach were conceived solely by the human team. The team identified that while official tools (JPL Horizons, QuickMap, Moon Trek) provide accurate lunar science, they are slow and cumbersome for mission planners who need to quickly evaluate trade-offs. The team decided that the winning edge was not discovering new science, but computing correct numbers behind a sub-second, interactive client-side tool answering: *"What happens to solar power and direct-to-Earth communication if our launch slips 3 weeks or our landing site moves 5 km?"*
-- **Drafting the Development Plan (AI-assisted):** Once the human team chose this idea and strategy, the team prompted an AI assistant (**Claude Code**) with the Space Apps challenge description and their chosen concept. The AI was used to draft the 48-hour development plan, architecture, data contracts, and team briefs (`docs/PLAN.md`). The team reviewed, refined, and approved this plan before building began.
+### Where the idea came from
 
-### 2. Breakdown of AI Tools Used and for What
+- The problem and the kind of tool wanted are NASA's: they are set out in the "Lunar Landing Site Navigator"
+  challenge. The team chose this challenge.
+- The team gave Claude Code the challenge text and asked it to draft a development plan. That plan
+  (`docs/PLAN.md`) proposed the first design of the tool: the views, the architecture, the data files and the
+  split of work. The team reviewed and approved it.
+- From there the team directed the work. These features were asked for by team members during the build:
+  suggesting the best landing site for a date; scoring the whole south-polar surface instead of only named
+  points; zooming to a selected point and showing its terrain in 3D; the height-colour look of the landscape;
+  the design of the guided tour; the zoomable date chart; the pinned control bar; the redesign of the Sun and
+  Earth; and the Moon loading indicator.
 
-| AI Tool / Model | Team Member / Role | What the AI Did | What the Human Did |
+### Who used what
+
+| Tool | Used by | What the AI did | What the person did |
 |---|---|---|---|
-| **Claude Code (Anthropic)** | Person A (Tech Lead & Core Math) | Drafted development plan (`docs/PLAN.md`); wrote core astronomy modules (`frames.ts`, `ephemeris.ts`, `horizon.ts`, `events.ts`); implemented 3D Moon globe (`Globe.tsx`), terrain landscape (`Landscape.tsx`), celestial scaling (`SkyBodies.tsx`), polar map (`PolarMap.tsx`), site/date ranking (`BestDates.tsx`, `Recommend.tsx`), scenario compare (`Compare.tsx`), and guided tour (`Tour.tsx`); authored test suites; reviewed/merged PRs. | Defined architecture and data contracts; set numerical accuracy standards; directed features and merges; verified test passes against Horizons. |
-| **Claude Max (Anthropic)** | Person B (Data Pipeline) | Wrote Python precomputation scripts (`pipeline/`): `fetch_horizons_fixtures.py` (JPL Horizons API client), `build_ephem.py` (`spiceypy` DE440 ephemeris generator for 2024–2040), `build_horizons.py` (720-azimuth ray-marching across LOLA DEMs), `build_polar_grid.py`, and `build_terrain_patches.py`. | Selected SPICE kernels and DEM datasets; downloaded raw PDS products; audited output binary formats. |
-| **Google Antigravity (Antigravity Pro / Gemini 3.8 Flash)** | Person C (Main Views) | Architected and implemented the first version of the main views: 360° horizon panorama (`Panorama.tsx`), 30-day three-tier timeline ribbon (`Timeline.tsx`), metrics cards (`Metrics.tsx`), schedule-slip sensitivity simulator (`ScheduleSlip.tsx`), two-pointer interval intersection algorithm for joint power+DTE windows (`intervals.ts`), and unit tests (`views.test.ts`). Provided panorama zoom presets (Polar $-3^\circ \to +7^\circ$, Mid $-5^\circ \to +25^\circ$, Full Sky $-10^\circ \to +90^\circ$), mouse crosshair az/el readouts, and schedule-slip delta card. Documented references in `docs/REFERENCES_ANTIGRAVITY_PRO.md`. | Verified interval intersection mathematics; ensured UI integration with core astronomy contracts; tested edge conditions. |
-| **ChatGPT / GPT-4o / GPT Pro (OpenAI)** | Person D (Catalog Research & 3D wireframing) | Assisted in researching candidate landing site coordinates, mission names, target crater features, and primary NASA/academic source URLs for `sites.json`; drafted initial wireframes for scenario comparison. | Cross-checked coordinates with primary NASA mission documentation and QuickMap before committing. |
-| **Human / No Subscription (Team Lead & Product Owner)** | Person E (Validation, QA & Submission) | *No AI generation of ideas.* Conceived project concept; confirmed 2026 Space Apps submission rules directly in browser; verified 18 of 20 landing site coordinates and elevations row-by-row against LROC QuickMap, NSSDC, JAXA, and ISRO records (`docs/QA.md`); conducted spot checks against live JPL Horizons web tool; authored demo script (`docs/DEMO.md`), slides, and submission documentation. | Full ownership of quality assurance, validation, demo script, and final submission. |
+| **Claude Code (Anthropic)** | Team lead | Drafted the development plan. Wrote the core astronomy module and its tests; the 3D Moon, landscape and Sun-Moon-Earth views; the sky panorama, timeline and readouts in the final app; the south-pole map; the site and date rankings; the scenario comparison; the guided tour. Wrote `fetch_horizons_fixtures.py`, `build_ephem.py`, `build_polar_grid.py` and `build_terrain_patches.py`, and rewrote `build_horizons.py` for the polar elevation models. Compiled the 20-site catalog with a source for each. Reviewed and merged pull requests. Drafted the demo script, this document and the project summary. | Chose the challenge; approved the plan; decided which features to build and asked for the ones listed above; reviewed the site in the browser and reported what to fix; decided on hosting and publication. |
+| **Claude (Anthropic)** | Teammate, data pipeline and QA | Wrote the first version of `build_horizons.py` (terrain skylines from LOLA data), fixed and ran `build_ephem.py`, regenerated the Horizons fixtures. Checked 18 of the 20 site coordinates against their cited sources and wrote the QA log. Confirmed the submission rules against the official guide. Wrote `docs/RESOURCES.md`. | Ran the pipeline and downloads; directed and reviewed the checks. |
+| **Google Antigravity (Gemini)** | Teammate, views | Wrote a first version of the main views (panorama, timeline, metrics, schedule-slip simulator) and the interval-intersection helper with its unit tests. In the final app, the interval helper and its tests are used as written; the schedule-slip simulator and the panorama's zoom presets and pointer readout were carried over and rewritten; the other views were replaced. Wrote `docs/REFERENCES_ANTIGRAVITY_PRO.md`. | Directed and reviewed that work. |
 
-### 3. Verification & Scientific Integrity
-- **Ground-Truth Calibration:** All numerical values for celestial coordinates, trajectories, and lighting conditions are computed deterministically from SPICE kernels and checked against 1,060 ground-truth coordinates from the NASA JPL Horizons on-line ephemeris system via automated tests (`npm test`). The maximum error is $<0.0001^\circ$. No AI hallucinated numbers were accepted.
-- **Media & Content:** No AI-generated imagery or video of human beings was used. No synthetic media with false NASA branding was generated.
+All code in this repository is AI-assisted.
 
----
+### How results were checked
 
-### 4. Official Space Apps Submission Form Answer (Copy & Paste Text)
+- Sun and Earth positions are computed from NASA SPICE kernels, not produced by an AI. An automated test
+  (`npm test`) compares them with 1,060 values from NASA JPL Horizons; the largest difference is 0.0001 degrees.
+- 18 of the 20 site coordinates were checked against their cited sources (NSSDC, JAXA and mission pages). Two
+  are marked unverified in the app.
+- No AI-generated images, audio or video are used. The Moon and Earth imagery is NASA's.
 
-Below is the exact, agreed response to paste into the **"How did you use Super Intelligence (SI) / AI tools?"** question on the Space Apps project submission form:
+### Text for the submission form's AI question
 
-> **Space Apps Submission Form — AI / Super Intelligence (SI) Disclosure:**
+> We used AI coding assistants throughout this project: Claude Code and Claude (Anthropic), and Google
+> Antigravity (Gemini). All code in our repository is AI-assisted.
 >
-> "Our team used AI coding assistants (Claude Code, Claude Max, Google Antigravity, and ChatGPT) to help write code, build precomputation pipelines, and author tests, under strict human guidance. 
+> The problem and the kind of tool wanted come from NASA's challenge, which our team chose. We gave Claude Code
+> the challenge text and asked it to draft a development plan; that plan proposed the first design of the tool
+> and the split of work, and our team reviewed and approved it. From there the team directed the work and asked
+> for features during the build, including the best-site ranking for a date, scoring the whole south-polar
+> surface, the 3D terrain view and the guided tour.
 >
-> In accordance with Space Apps rules, AI was NOT used to come up with the project idea. The original concept was conceived by the human team: creating a fast, client-side navigator that lets mission planners evaluate landing site and date scenarios in seconds and immediately see the impact of schedule slips on power and direct-to-Earth communication. Once the human team established this concept and approach, we prompted Claude Code with our concept and the challenge text to draft our 48-hour development plan, architecture, and team briefs (docs/PLAN.md), which we reviewed and approved before starting development.
+> Claude Code wrote the astronomy calculations and their tests, the 3D views, the maps, the rankings and most of
+> the interface, compiled the site list, and drafted our documentation. Claude wrote the first terrain-skyline
+> script, ran the data pipeline, checked site coordinates against their sources and wrote the resource list.
+> Google Antigravity wrote first versions of the main views; its interval helper and tests are in the final app
+> and its schedule-slip simulator was carried over.
 >
-> AI tools were then used as implementation assistants: Claude Code built the core astronomy engine, 3D Moon globe, polar map, and guided tour; Claude Max assisted with Python scripts to process SPICE DE440 ephemerides and ray-march LOLA DEMs; Google Antigravity implemented the 360° horizon panorama, 30-day three-tier timeline ribbon, interval intersection algorithm, and schedule-slip delta simulator; and ChatGPT assisted with site catalog research. 
->
-> To ensure scientific validity, no astronomical numbers from AI were accepted on trust: all calculations are precomputed from official NASA SPICE kernels and verified by an automated test suite against 1,060 fixture values from NASA JPL Horizons, with a maximum deviation under 0.0001 degrees. All site coordinates were manually verified against LROC QuickMap, NSSDC, and space agency sources. No AI-generated media of people or deceptive branding was used."
-
----
+> No numbers were accepted on an AI's word. Sun and Earth positions are computed from NASA SPICE data and
+> checked by an automated test against 1,060 values from NASA JPL Horizons (largest difference 0.0001 degrees).
+> 18 of 20 site coordinates were checked against their cited sources. No AI-generated images, audio or video
+> are used.
 
 ## Before submitting
 
 - [x] Both guides read in a browser; table above confirmed
-- [x] Team decision on the AI rule recorded (agreed on 15 Nov 2026)
+- [ ] Every teammate has read "Use of AI tools" below and confirms their row is accurate
 - [x] Site list verified: 18 of 20 rows confirmed against their cited sources and set to `verified: true` on 14 Nov 2026; 2 rows (shackleton-ridge, change-7) left `verified: false` with a reason. Full log in `docs/QA.md`.
 - [ ] Live demo link opens in a private window with no login
 - [x] Repo is public
