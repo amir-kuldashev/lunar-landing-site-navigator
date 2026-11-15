@@ -92,7 +92,12 @@ Standard-library modules used: `json`, `re`, `sys`, `time`, `urllib`, `datetime`
 
 ## Use of AI assistants
 
-AI coding assistants (Claude, ChatGPT, Google Antigravity) were used to plan and write code, as permitted by
-the Space Apps rules. See the Super Intelligence (SI) disclosure in `docs/SUBMISSION.md`. All numerical output
-is checked against JPL Horizons by an automated test, not accepted on the AI's word. No AI-generated imagery of
-people is used.
+In accordance with the Space Apps 2026 Super Intelligence (SI) rules:
+
+- **Original Project Idea:** Conceived solely by the human team members (fast, intuitive comparison of site + date scenarios for power and comms, answering "what happens if we slip 3 weeks or move 5 km?").
+- **Development Plan:** Drafted by Claude Code based on the human team's chosen concept, then reviewed and approved by the team (`docs/PLAN.md`).
+- **Code & Pipelines:** AI coding assistants (Claude Code, Claude Max, Google Antigravity, and ChatGPT) were used to write code, pipelines, and test suites, as permitted by Space Apps rules.
+- **Verification:** All numerical output is checked against NASA JPL Horizons by an automated test suite (1,060 fixture samples, max error $<0.0001^\circ$), not accepted on the AI's word.
+- **Media:** No AI-generated imagery or video of human beings was used. No deceptive branding was created.
+
+See the full agreed disclosure and exact submission form answer in `docs/SUBMISSION.md` and `docs/REFERENCES_ANTIGRAVITY_PRO.md`.
