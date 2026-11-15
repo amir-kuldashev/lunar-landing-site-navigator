@@ -22,9 +22,9 @@ browser. Values below are from the live guide, not last year's.
 | Judging | Impact, Creativity, Validity, Relevance, Presentation | ✅ |
 | Website access | Optional but recommended: request a FortiGuard Web Filter Classification for the live-demo site so judges are not blocked | ☐ |
 
-**SI/AI disclosure.** AI coding assistants were used heavily throughout the project, including to draft the
-development plan and the first design of the tool. This is disclosed in "Use of AI tools" below, which also has
-the text for the submission form's AI question. All code in this repository is AI-assisted.
+**SI/AI disclosure.** We used AI coding assistants heavily throughout the project, including to draft our
+development plan and the first design of the tool. We disclose this in "Use of AI tools" below, which also has
+the text for the submission form's AI question. All the code in our repository is AI-assisted.
 
 ## Links to submit
 
@@ -94,39 +94,39 @@ Full list with URLs and citations: `pipeline/README.md`.
 
 ## Use of AI tools
 
-Fact-checked against the repository's commit history on 15 Nov 2026. Three people committed to this project,
-and all three used AI coding assistants. No other AI tools were used.
+Three of us committed to this project, and all three of us used AI coding assistants. We used no other AI
+tools. We checked this section against our repository's commit history on 15 Nov 2026.
 
 ### Where the idea came from
 
 - The problem and the kind of tool wanted are NASA's: they are set out in the "Lunar Landing Site Navigator"
-  challenge. The team chose this challenge.
-- The team gave Claude Code the challenge text and asked it to draft a development plan. That plan
-  (`docs/PLAN.md`) proposed the first design of the tool: the views, the architecture, the data files and the
-  split of work. The team reviewed and approved it.
-- From there the team directed the work. These features were asked for by team members during the build:
-  suggesting the best landing site for a date; scoring the whole south-polar surface instead of only named
-  points; zooming to a selected point and showing its terrain in 3D; the height-colour look of the landscape;
-  the design of the guided tour; the zoomable date chart; the pinned control bar; the redesign of the Sun and
-  Earth; and the Moon loading indicator.
+  challenge. We chose this challenge.
+- We gave Claude Code the challenge text and asked it to draft a development plan. That plan (`docs/PLAN.md`)
+  proposed the first design of our tool: the views, the architecture, the data files and the split of work. We
+  reviewed and approved it.
+- From there we directed the work. We asked for these features during the build: suggesting the best landing
+  site for a date; scoring the whole south-polar surface instead of only named points; zooming to a selected
+  point and showing its terrain in 3D; the height-colour look of the landscape; the design of the guided tour;
+  the zoomable date chart; the pinned control bar; the redesign of the Sun and Earth; and the Moon loading
+  indicator.
 
 ### Who used what
 
-| Tool | Used by | What the AI did | What the person did |
+| Tool | Who on our team | What we used the AI for | What we did ourselves |
 |---|---|---|---|
-| **Claude Code (Anthropic)** | Team lead | Drafted the development plan. Wrote the core astronomy module and its tests; the 3D Moon, landscape and Sun-Moon-Earth views; the sky panorama, timeline and readouts in the final app; the south-pole map; the site and date rankings; the scenario comparison; the guided tour. Wrote `fetch_horizons_fixtures.py`, `build_ephem.py`, `build_polar_grid.py` and `build_terrain_patches.py`, and rewrote `build_horizons.py` for the polar elevation models. Compiled the 20-site catalog with a source for each. Reviewed and merged pull requests. Drafted the demo script, this document and the project summary. | Chose the challenge; approved the plan; decided which features to build and asked for the ones listed above; reviewed the site in the browser and reported what to fix; decided on hosting and publication. |
-| **Claude (Anthropic)** | Teammate, data pipeline and QA | Wrote the first version of `build_horizons.py` (terrain skylines from LOLA data), fixed and ran `build_ephem.py`, regenerated the Horizons fixtures. Checked 18 of the 20 site coordinates against their cited sources and wrote the QA log. Confirmed the submission rules against the official guide. Wrote `docs/RESOURCES.md`. | Ran the pipeline and downloads; directed and reviewed the checks. |
-| **Google Antigravity (Gemini)** | Teammate, views | Wrote a first version of the main views (panorama, timeline, metrics, schedule-slip simulator) and the interval-intersection helper with its unit tests. In the final app, the interval helper and its tests are used as written; the schedule-slip simulator and the panorama's zoom presets and pointer readout were carried over and rewritten; the other views were replaced. Wrote `docs/REFERENCES_ANTIGRAVITY_PRO.md`. | Directed and reviewed that work. |
+| **Claude Code (Anthropic)** | Team lead | Drafting the development plan. Writing the core astronomy module and its tests; the 3D Moon, landscape and Sun-Moon-Earth views; the sky panorama, timeline and readouts in the final app; the south-pole map; the site and date rankings; the scenario comparison; the guided tour. Writing `fetch_horizons_fixtures.py`, `build_ephem.py`, `build_polar_grid.py` and `build_terrain_patches.py`, and rewriting `build_horizons.py` for the polar elevation models. Compiling the 20-site catalog with a source for each. Reviewing and merging pull requests. Drafting the demo script, this document and the project summary. | Chose the challenge; approved the plan; decided which features to build and asked for the ones listed above; reviewed the site in the browser and reported what to fix; decided on hosting and publication. |
+| **Claude (Anthropic)** | Data pipeline and QA | Writing the first version of `build_horizons.py` (terrain skylines from LOLA data), fixing and running `build_ephem.py`, regenerating the Horizons fixtures. Checking 18 of the 20 site coordinates against their cited sources and writing the QA log. Confirming the submission rules against the official guide. Writing `docs/RESOURCES.md`. | Ran the pipeline and downloads; directed and reviewed the checks. |
+| **Google Antigravity (Gemini)** | Views | Writing a first version of the main views (panorama, timeline, metrics, schedule-slip simulator) and the interval-intersection helper with its unit tests. In our final app, the interval helper and its tests are used as written; the schedule-slip simulator and the panorama's zoom presets and pointer readout were carried over and rewritten; the other views were replaced. Writing `docs/REFERENCES_ANTIGRAVITY_PRO.md`. | Directed and reviewed that work. |
 
-All code in this repository is AI-assisted.
+All the code in our repository is AI-assisted.
 
-### How results were checked
+### How we checked the results
 
-- Sun and Earth positions are computed from NASA SPICE kernels, not produced by an AI. An automated test
+- Our Sun and Earth positions are computed from NASA SPICE kernels, not produced by an AI. Our automated test
   (`npm test`) compares them with 1,060 values from NASA JPL Horizons; the largest difference is 0.0001 degrees.
-- 18 of the 20 site coordinates were checked against their cited sources (NSSDC, JAXA and mission pages). Two
-  are marked unverified in the app.
-- No AI-generated images, audio or video are used. The Moon and Earth imagery is NASA's.
+- We checked 18 of our 20 site coordinates against their cited sources (NSSDC, JAXA and mission pages). The
+  other two are marked unverified in the app.
+- We use no AI-generated images, audio or video. The Moon and Earth imagery is NASA's.
 
 ### Text for the submission form's AI question
 
@@ -135,25 +135,25 @@ All code in this repository is AI-assisted.
 >
 > The problem and the kind of tool wanted come from NASA's challenge, which our team chose. We gave Claude Code
 > the challenge text and asked it to draft a development plan; that plan proposed the first design of the tool
-> and the split of work, and our team reviewed and approved it. From there the team directed the work and asked
-> for features during the build, including the best-site ranking for a date, scoring the whole south-polar
+> and the split of work, and we reviewed and approved it. From there we directed the work and asked for
+> features during the build, including the best-site ranking for a date, scoring the whole south-polar
 > surface, the 3D terrain view and the guided tour.
 >
-> Claude Code wrote the astronomy calculations and their tests, the 3D views, the maps, the rankings and most of
-> the interface, compiled the site list, and drafted our documentation. Claude wrote the first terrain-skyline
-> script, ran the data pipeline, checked site coordinates against their sources and wrote the resource list.
-> Google Antigravity wrote first versions of the main views; its interval helper and tests are in the final app
-> and its schedule-slip simulator was carried over.
+> We used Claude Code to write the astronomy calculations and their tests, the 3D views, the maps, the rankings
+> and most of the interface, to compile the site list, and to draft our documentation. We used Claude to write
+> the first terrain-skyline script, run the data pipeline, check site coordinates against their sources and
+> write the resource list. We used Google Antigravity to write first versions of the main views; its interval
+> helper and tests are in our final app and its schedule-slip simulator was carried over.
 >
-> No numbers were accepted on an AI's word. Sun and Earth positions are computed from NASA SPICE data and
-> checked by an automated test against 1,060 values from NASA JPL Horizons (largest difference 0.0001 degrees).
-> 18 of 20 site coordinates were checked against their cited sources. No AI-generated images, audio or video
-> are used.
+> We accepted no numbers on an AI's word. Our Sun and Earth positions are computed from NASA SPICE data and
+> checked by our automated test against 1,060 values from NASA JPL Horizons (largest difference 0.0001 degrees).
+> We checked 18 of our 20 site coordinates against their cited sources. We use no AI-generated images, audio or
+> video.
 
 ## Before submitting
 
 - [x] Both guides read in a browser; table above confirmed
-- [ ] Every teammate has read "Use of AI tools" below and confirms their row is accurate
+- [ ] Each of us has read "Use of AI tools" below and confirmed our own row is accurate
 - [x] Site list verified: 18 of 20 rows confirmed against their cited sources and set to `verified: true` on 14 Nov 2026; 2 rows (shackleton-ridge, change-7) left `verified: false` with a reason. Full log in `docs/QA.md`.
 - [ ] Live demo link opens in a private window with no login
 - [x] Repo is public

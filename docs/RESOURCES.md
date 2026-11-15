@@ -92,12 +92,12 @@ Standard-library modules used: `json`, `re`, `sys`, `time`, `urllib`, `datetime`
 
 ## Use of AI assistants
 
-AI coding assistants were used throughout: Claude Code and Claude (Anthropic), and Google Antigravity (Gemini).
-All code in this repository is AI-assisted, and the development plan and first design of the tool were drafted
-by Claude Code from NASA's challenge text, then reviewed and approved by the team.
+We used AI coding assistants throughout: Claude Code and Claude (Anthropic), and Google Antigravity (Gemini).
+All the code in our repository is AI-assisted. Our development plan and the first design of the tool were
+drafted by Claude Code from NASA's challenge text; we reviewed and approved them.
 
-Sun and Earth positions are computed from NASA SPICE data and checked by an automated test against 1,060
-values from NASA JPL Horizons (largest difference 0.0001 degrees). No AI-generated images, audio or video are
-used.
+Our Sun and Earth positions are computed from NASA SPICE data and checked by our automated test against 1,060
+values from NASA JPL Horizons (largest difference 0.0001 degrees). We use no AI-generated images, audio or
+video.
 
-The full disclosure, with who used which tool for what, is in `docs/SUBMISSION.md`.
+Our full disclosure, with who used which tool for what, is in `docs/SUBMISSION.md`.
